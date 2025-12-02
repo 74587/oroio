@@ -65,12 +65,6 @@ dk serve status # Check if running
 
 Access at `http://localhost:15915` to view and manage keys visually.
 
-## Data Storage
-
-Keys are stored in `~/.oroio/`:
-- `keys.tsv` — Key list (plaintext, manage permissions accordingly)
-- `current` — Active key index
-
 ## Installation Details
 
 ### What Gets Installed
