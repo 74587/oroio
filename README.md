@@ -1,68 +1,96 @@
-# droid key manager (dk)
+# dk
 
-用 Bash 写的轻量 CLI，用于批量管理 Factory droid API keys，查询余额/到期；仅在 `dk run` 时余额耗尽会自动轮换可用 key。
+**Lightweight CLI for managing Factory Droid API keys with auto-rotation.**
 
-## 安装
+[中文](README.zh-CN.md)
 
-### 脚本安装 / 重装 / 卸载
+## What is dk?
 
-- 安装（默认到 `$HOME/.local/bin`，脚本每次都会从 GitHub 获取最新 `dk`）：
+dk manages multiple Factory Droid API keys in one place. It tracks usage limits and expiration dates, and automatically rotates to the next available key when one runs out—so your AI coding sessions never get interrupted.
 
-  ```bash
-  curl -fsSL https://raw.githubusercontent.com/notdp/oroio/main/install.sh | bash
-  ```
+### Perfect For
 
-- 安装脚本会安装 `dk` 并在 shell rc 文件中添加 `alias droid='dk run droid'`，重新打开终端后可直接运行 `droid`。
+- **Heavy Droid Users** — Manage multiple API keys without manual switching
+- **Team Environments** — Share key pools across machines
+- **Uninterrupted Workflows** — Auto-rotation keeps sessions running
 
-- 重装（先卸载再覆盖）：
+## Quick Start
 
-  ```bash
-  curl -fsSL https://raw.githubusercontent.com/notdp/oroio/main/reinstall.sh | bash
-  ```
-
-- 卸载：
-
-  ```bash
-  curl -fsSL https://raw.githubusercontent.com/notdp/oroio/main/uninstall.sh | bash
-  ```
-
-## 快速上手
+### Install
 
 ```bash
-# 1) 添加一批 key（空格分隔）
+curl -fsSL https://raw.githubusercontent.com/notdp/oroio/main/install.sh | bash
+```
+
+The installer adds a `droid` alias to your shell. Restart your terminal, then just run `droid`.
+
+### Basic Workflow
+
+```bash
+# 1. Add your API keys
 dk add fk-xxxx fk-yyyy fk-zzzz
 
-# 或从文件导入
-dk add --file keys.txt   # 文件每行一个 key
+# Or import from file (one key per line)
+dk add --file keys.txt
 
-# 2) 查看余额/到期与当前 key
+# 2. Check usage and expiration
 dk list
 
-# 3) 查看当前 key（会同时输出 export 行并尝试复制到剪贴板）
-dk current
-
-# 4) 直接运行 droid（安装时已配置 alias，自动注入 key 并支持轮换）
+# 3. Run droid (auto-injects key, auto-rotates on exhaustion)
 droid
 ```
 
-## 命令
+## Commands
 
-- `dk add <key...>` / `dk add --file <路径>`：添加 key。
-- `dk list`：列出所有 key，实时查询余额/到期。
-- `dk current`：显示当前 key，输出 `export FACTORY_API_KEY=...` 并尝试复制到剪贴板。
-- `dk use <序号>`：切换当前 key（不传序号时提供交互菜单）。
-- `dk run <命令...>`：使用当前 key 运行命令（注入 `FACTORY_API_KEY`，并在余额为 0 时自动轮换）。
-- `dk uninstall [--prefix <dir>]`：卸载 dk，每次从远程获取 `uninstall.sh` 执行。
-- `dk reinstall [--prefix <dir>]`：重装 dk，每次从远程获取 `reinstall.sh` 执行（可用 `--prefix` 设定安装目录，通常无需配置环境变量）。
-- `dk rm <序号...>`：删除指定序号的 key。
+| Command | Description |
+|---------|-------------|
+| `dk add <key...>` | Add one or more API keys |
+| `dk add --file <path>` | Import keys from file |
+| `dk list` | Show all keys with usage/expiration |
+| `dk current` | Display current key and copy export command |
+| `dk use <n>` | Switch to key by index |
+| `dk rm <n...>` | Remove keys by index |
+| `dk run <cmd>` | Run command with current key (auto-rotates) |
+| `dk serve` | Start web dashboard on port 15915 |
+| `dk reinstall` | Update to latest version |
+| `dk uninstall` | Remove dk |
 
-## 数据存储
+## Web Dashboard
 
-- 目录：`~/.oroio`
-- `keys.tsv`：每行 `key<TAB>label`（label 目前未使用，可留空）
-- `current`：当前 key 的序号（从 1 开始）
+```bash
+dk serve        # Start dashboard
+dk serve stop   # Stop dashboard
+dk serve status # Check if running
+```
 
-## 注意
+Access at `http://localhost:15915` to view and manage keys visually.
 
-- CLI 直接保存明文 key，请自行管理文件权限。
-- 查询余额使用官方接口 `https://app.factory.ai/api/organization/members/chat-usage`，若返回字段发生变化，`dk list` 仍会展示原始返回的摘要。
+## Data Storage
+
+Keys are stored in `~/.oroio/`:
+- `keys.tsv` — Key list (plaintext, manage permissions accordingly)
+- `current` — Active key index
+
+## Installation Details
+
+### What Gets Installed
+
+- Binary: `~/.local/bin/dk`
+- Data: `~/.oroio/`
+- Shell alias: `droid` → `dk run droid`
+
+### Updating
+
+```bash
+dk reinstall
+```
+
+### Uninstalling
+
+```bash
+dk uninstall
+```
+
+---
+
+**Stop juggling API keys. Start shipping code.**

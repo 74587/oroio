@@ -99,7 +99,8 @@ main() {
     # 删除空目录（web 目录等）
     find "$oroio_dir" -type d -empty -delete 2>/dev/null || true
     if [ -f "$oroio_dir/keys.enc" ]; then
-      summary+=("已清理 $oroio_dir（保留 keys.enc）")
+      # 使用花括号避免非 ASCII 符号被当作变量名的一部分
+      summary+=("已清理 ${oroio_dir}（保留 keys.enc）")
     else
       rm -rf "$oroio_dir" 2>/dev/null || true
       summary+=("已删除 $oroio_dir")

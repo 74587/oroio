@@ -24,7 +24,7 @@ die() {
 }
 
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]:-${0}}")" 2>/dev/null && pwd || true)
-TMP_DIRS=()
+TMP_DIR=$(mktemp -d)
 
 fetch_script() {
   local name="$1"
@@ -37,21 +37,16 @@ fetch_script() {
 
   command -v curl >/dev/null 2>&1 || die "需要 curl 以下载 $name"
 
-  local tmp
-  tmp=$(mktemp -d)
-  TMP_DIRS+=("$tmp")
   local url="https://raw.githubusercontent.com/notdp/oroio/main/$name"
-  printf '正在从 %s 下载 %s...\n' "$url" "$name"
-  curl -fsSL "$url" -o "$tmp/$name" || die "下载 $name 失败"
-  chmod +x "$tmp/$name"
-  echo "$tmp/$name"
+  # 打印到 stderr，避免被命令替换捕获
+  printf '正在从 %s 下载 %s...\n' "$url" "$name" >&2
+  curl -fsSL "$url" -o "$TMP_DIR/$name" || die "下载 $name 失败"
+  chmod +x "$TMP_DIR/$name"
+  echo "$TMP_DIR/$name"
 }
 
 cleanup() {
-  local dir
-  for dir in "${TMP_DIRS[@]:-}"; do
-    [ -n "$dir" ] && rm -rf "$dir"
-  done
+  [ -n "$TMP_DIR" ] && rm -rf "$TMP_DIR"
 }
 trap cleanup EXIT
 
