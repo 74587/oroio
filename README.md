@@ -4,12 +4,27 @@
 
 ## 安装
 
-```bash
-chmod +x bin/dk
-sudo ln -sf "$(pwd)/bin/dk" /usr/local/bin/dk  # 或自行放到 PATH
-```
+### 脚本安装 / 重装 / 卸载
 
-数据目录固定为 `~/.oroio`，无需配置。
+- 安装（默认到 `$HOME/.local/bin`，脚本每次都会从 GitHub 获取最新 `dk`）：
+
+  ```bash
+  curl -fsSL https://raw.githubusercontent.com/notdp/oroio/main/install.sh | bash
+  ```
+
+- 安装脚本只安装 `dk`。`dk reinstall` 每次都会从 GitHub 下载最新 `reinstall.sh` 执行，不会额外向 PATH 写入其他脚本。
+
+- 重装（先卸载再覆盖）：
+
+  ```bash
+  curl -fsSL https://raw.githubusercontent.com/notdp/oroio/main/reinstall.sh | bash
+  ```
+
+- 卸载：
+
+  ```bash
+  curl -fsSL https://raw.githubusercontent.com/notdp/oroio/main/uninstall.sh | bash
+  ```
 
 ## 快速上手
 
@@ -26,8 +41,8 @@ dk list
 # 3) 查看当前 key（会同时输出 export 行并尝试复制到剪贴板）
 dk current
 
-# 4) 使用当前 key 运行命令（若余额为 0 将自动轮换）
-dk run curl https://example.com
+# 4) 使用当前 key 运行droid（若余额为 0 将自动轮换）
+dk run droid
 ```
 
 ## 命令
@@ -37,6 +52,8 @@ dk run curl https://example.com
 - `dk current`：显示当前 key，输出 `export FACTORY_API_KEY=...` 并尝试复制到剪贴板。
 - `dk use <序号>`：切换当前 key（不传序号时提供交互菜单）。
 - `dk run <命令...>`：使用当前 key 运行命令（注入 `FACTORY_API_KEY`，并在余额为 0 时自动轮换）。
+- `dk uninstall [--prefix <dir>]`：卸载 dk，每次从远程获取 `uninstall.sh` 执行。
+- `dk reinstall [--prefix <dir>]`：重装 dk，每次从远程获取 `reinstall.sh` 执行（可用 `--prefix` 设定安装目录，通常无需配置环境变量）。
 - `dk rm <序号...>`：删除指定序号的 key。
 
 ## 数据存储

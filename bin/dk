@@ -15,6 +15,8 @@ Commands:
   current                show current key + export + clipboard
   use [index]            switch key (interactive if no index)
   run <cmd...>           run with key (auto-rotate on zero balance)
+  uninstall [options]    uninstall dk (wrapper around uninstall.sh)
+  reinstall [options]    reinstall dk (wrapper around reinstall.sh)
   rm <index...>          remove keys
   help                   show this help
 EOF
@@ -836,6 +838,32 @@ cmd_rm() {
   set_current 1
 }
 
+cmd_reinstall() {
+  local script_url="https://raw.githubusercontent.com/notdp/oroio/main/reinstall.sh"
+
+  echo "从远程获取 reinstall.sh ..."
+  if command -v curl >/dev/null 2>&1; then
+    curl -fsSL "$script_url" | bash -s -- "$@"
+  elif command -v wget >/dev/null 2>&1; then
+    wget -qO- "$script_url" | bash -s -- "$@"
+  else
+    die "缺少 curl/wget，无法下载 reinstall.sh"
+  fi
+}
+
+cmd_uninstall() {
+  local script_url="https://raw.githubusercontent.com/notdp/oroio/main/uninstall.sh"
+
+  echo "从远程获取 uninstall.sh ..."
+  if command -v curl >/dev/null 2>&1; then
+    curl -fsSL "$script_url" | bash -s -- "$@"
+  elif command -v wget >/dev/null 2>&1; then
+    wget -qO- "$script_url" | bash -s -- "$@"
+  else
+    die "缺少 curl/wget，无法下载 uninstall.sh"
+  fi
+}
+
 main() {
   local cmd="${1:-help}"; shift || true
   case "$cmd" in
@@ -846,6 +874,8 @@ main() {
     rotate) cmd_rotate "$@";;
     run) cmd_run "$@";;
     rm|remove|del) cmd_rm "$@";;
+    uninstall) cmd_uninstall "$@";;
+    reinstall) cmd_reinstall "$@";;
     help|-h|--help) usage;;
     *) die "未知命令: $cmd";;
   esac
