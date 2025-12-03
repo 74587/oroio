@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Trash2, Plus, RefreshCw, Terminal, CheckCircle2, Copy, Circle } from 'lucide-react';
 import { decryptKeys, maskKey } from '@/utils/crypto';
-import { fetchEncryptedKeys, fetchCurrentIndex, fetchCache, addKey, removeKey, useKey, refreshCache } from '@/utils/api';
+import { fetchEncryptedKeys, fetchCurrentIndex, fetchCache, addKey, removeKey, useKey, refreshCache, isElectron } from '@/utils/api';
 import type { KeyInfo, KeyUsage } from '@/utils/api';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -110,10 +110,12 @@ export default function KeyList() {
   const [newKey, setNewKey] = useState('');
   const [adding, setAdding] = useState(false);
 
-  const loadData = useCallback(async (showRefreshing = false, autoRefresh = true) => {
+  const loadData = useCallback(async (showRefreshing = false, autoRefresh = true, silent = false) => {
     try {
-      if (showRefreshing) setRefreshing(true);
-      else setLoading(true);
+      if (!silent) {
+        if (showRefreshing) setRefreshing(true);
+        else setLoading(true);
+      }
       setError(null);
       
       const [encryptedData, currentIndex, cache] = await Promise.all([
@@ -157,6 +159,14 @@ export default function KeyList() {
 
   useEffect(() => {
     loadData();
+    
+    // Listen for updates from tray menu (Electron only)
+    if (isElectron) {
+      const unsubscribe = window.oroio.on('keys-updated', () => {
+        loadData(false, false, true);
+      });
+      return unsubscribe;
+    }
   }, [loadData]);
 
   const handleRefresh = async () => {

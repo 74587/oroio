@@ -1,7 +1,13 @@
-import { Tray, Menu, nativeImage, app, NativeImage } from 'electron';
+import { Tray, Menu, nativeImage, app, NativeImage, BrowserWindow } from 'electron';
 import * as path from 'path';
 import { createMainWindow } from './index';
 import { useKey, maskKey, getKeyList, type KeyInfo } from './keyManager';
+
+function notifyWebContents(): void {
+  BrowserWindow.getAllWindows().forEach(win => {
+    win.webContents.send('keys-updated');
+  });
+}
 
 let tray: Tray | null = null;
 
@@ -64,6 +70,7 @@ function buildContextMenu(keys: KeyInfo[]): Menu {
         if (result.success) {
           const newKeys = await getKeyList();
           updateTrayMenu(newKeys);
+          notifyWebContents();
         }
       },
     });
