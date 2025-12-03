@@ -81,6 +81,8 @@ dk serve status # 检查运行状态
 >
 > **注意**：桌面应用需要先安装 `dk` CLI。
 
+![alt text](assets/imgs/desktop.png)
+
 ## 安装详情
 
 ### 安装内容

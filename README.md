@@ -46,18 +46,18 @@ Here's what `dk list` looks like:
 
 ## Commands
 
-| Command | Description |
-|---------|-------------|
-| `dk add <key...>` | Add one or more API keys |
-| `dk add --file <path>` | Import keys from file |
-| `dk list` | Show all keys with usage/expiration |
-| `dk current` | Display current key and copy export command |
-| `dk use <n>` | Switch to key by index |
-| `dk rm <n...>` | Remove keys by index |
-| `dk run <cmd>` | Run command with current key (auto-rotates) |
-| `dk serve` | Start web dashboard on port 7758 |
-| `dk reinstall` | Update to latest version |
-| `dk uninstall` | Remove dk |
+| Command                | Description                                 |
+| ---------------------- | ------------------------------------------- |
+| `dk add <key...>`      | Add one or more API keys                    |
+| `dk add --file <path>` | Import keys from file                       |
+| `dk list`              | Show all keys with usage/expiration         |
+| `dk current`           | Display current key and copy export command |
+| `dk use <n>`           | Switch to key by index                      |
+| `dk rm <n...>`         | Remove keys by index                        |
+| `dk run <cmd>`         | Run command with current key (auto-rotates) |
+| `dk serve`             | Start web dashboard on port 7758            |
+| `dk reinstall`         | Update to latest version                    |
+| `dk uninstall`         | Remove dk                                   |
 
 ## Web Dashboard
 
@@ -80,6 +80,8 @@ Download from [Releases](https://github.com/notdp/oroio/releases/tag/electron-di
 > **macOS**: After installing, run `xattr -cr /Applications/oroio.app` to bypass Gatekeeper (app is unsigned).
 >
 > **Note**: The desktop app requires the `dk` CLI to be installed first.
+
+![alt text](assets/imgs/desktop.png)
 
 ## Installation Details
 
