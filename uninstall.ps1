@@ -82,7 +82,15 @@ if ($RemoveData) {
 }
 else {
     if (Test-Path $OROIO_DIR) {
-        Write-Warn "Data directory preserved: $OROIO_DIR"
+        # 与 macOS 卸载行为对齐：默认保留 keys.enc，清理其他缓存/配置文件
+        Get-ChildItem -Path $OROIO_DIR -Recurse -File | Where-Object { $_.Name -ne "keys.enc" } | ForEach-Object {
+            Remove-Item -Path $_.FullName -Force -ErrorAction SilentlyContinue
+        }
+        # 删除可能空的子目录
+        Get-ChildItem -Path $OROIO_DIR -Recurse -Directory | Where-Object { ($_ | Get-ChildItem -Force | Measure-Object).Count -eq 0 } | ForEach-Object {
+            Remove-Item -Path $_.FullName -Force -ErrorAction SilentlyContinue
+        }
+        Write-Warn "Data directory preserved (keys.enc 保留): $OROIO_DIR"
         Write-Host "  Use -RemoveData to delete it."
     }
 }
