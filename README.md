@@ -71,6 +71,14 @@ Access at `http://localhost:7758` to view and manage keys visually.
 
 ![Web Dashboard](imgs/web-dashboard.png)
 
+## Desktop App (Optional)
+
+A standalone desktop app is available for macOS, Windows, and Linux. It provides the same dashboard experience with system tray integration and low-balance notifications.
+
+Download from [Releases](https://github.com/notdp/oroio/releases/tag/electron-dist).
+
+> Note: The desktop app requires the `dk` CLI to be installed first.
+
 ## Installation Details
 
 ### What Gets Installed

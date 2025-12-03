@@ -1,0 +1,105 @@
+name: Build Electron
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'electron/**'
+      - 'web/**'
+      - '.github/workflows/build-electron.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: macos-latest
+            platform: mac
+          - os: ubuntu-latest
+            platform: linux
+          - os: windows-latest
+            platform: win
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install web dependencies
+        working-directory: web
+        run: npm ci
+
+      - name: Build web
+        working-directory: web
+        run: npm run build
+
+      - name: Install electron dependencies
+        working-directory: electron
+        run: npm ci
+
+      - name: Build electron main
+        working-directory: electron
+        run: npm run build:main
+
+      - name: Build electron app
+        working-directory: electron
+        run: npm run dist
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: electron-${{ matrix.platform }}
+          path: |
+            electron/release/*.dmg
+            electron/release/*.zip
+            electron/release/*.exe
+            electron/release/*.AppImage
+            electron/release/*.deb
+          if-no-files-found: ignore
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: List artifacts
+        run: find artifacts -type f 2>/dev/null || ls -la artifacts/ || echo "No artifacts"
+
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            .git
+          sparse-checkout-cone-mode: false
+
+      - name: Update tag
+        run: |
+          git tag -f electron-dist
+          git push -f origin electron-dist
+
+      - name: Upload to release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: electron-dist
+          name: Electron Desktop App
+          body: |
+            Pre-built desktop application for macOS, Windows, and Linux.
+            
+            **macOS**: Download `.dmg` (arm64 for Apple Silicon, x64 for Intel)
+            **Windows**: Download `.exe` installer
+            **Linux**: Download `.AppImage` or `.deb`
+          files: artifacts/*
+          fail_on_unmatched_files: false

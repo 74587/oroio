@@ -71,6 +71,14 @@ dk serve status # 检查运行状态
 
 ![Web Dashboard](imgs/web-dashboard.png)
 
+## 桌面应用（可选）
+
+提供适用于 macOS、Windows 和 Linux 的独立桌面应用。具备相同的控制台功能，并支持系统托盘和余额不足提醒。
+
+从 [Releases](https://github.com/notdp/oroio/releases/tag/electron-dist) 下载。
+
+> 注意：桌面应用需要先安装 `dk` CLI。
+
 ## 安装详情
 
 ### 安装内容

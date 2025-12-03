@@ -33,6 +33,7 @@ function oroioDataPlugin() {
 }
 
 export default defineConfig({
+  base: './',
   plugins: [react(), tailwindcss(), oroioDataPlugin()],
   resolve: {
     alias: {

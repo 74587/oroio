@@ -13,13 +13,27 @@ export interface KeyInfo {
   usage: KeyUsage | null;
 }
 
+// Detect if running in Electron
+export const isElectron = typeof window !== 'undefined' && 'oroio' in window;
+
 export async function fetchEncryptedKeys(): Promise<ArrayBuffer> {
+  if (isElectron) {
+    const data = await window.oroio.data.read('keys.enc');
+    if (!data) throw new Error('Failed to read keys.enc');
+    return data;
+  }
   const res = await fetch('/data/keys.enc');
   if (!res.ok) throw new Error('Failed to fetch keys.enc');
   return res.arrayBuffer();
 }
 
 export async function fetchCurrentIndex(): Promise<number> {
+  if (isElectron) {
+    const data = await window.oroio.data.read('current');
+    if (!data) return 1;
+    const text = new TextDecoder().decode(data);
+    return parseInt(text.trim(), 10) || 1;
+  }
   const res = await fetch('/data/current');
   if (!res.ok) return 1;
   const text = await res.text();
@@ -27,10 +41,18 @@ export async function fetchCurrentIndex(): Promise<number> {
 }
 
 export async function fetchCache(): Promise<Map<number, KeyUsage>> {
-  const res = await fetch('/data/list_cache.b64');
-  if (!res.ok) return new Map();
+  let text: string;
   
-  const text = await res.text();
+  if (isElectron) {
+    const data = await window.oroio.data.read('list_cache.b64');
+    if (!data) return new Map();
+    text = new TextDecoder().decode(data);
+  } else {
+    const res = await fetch('/data/list_cache.b64');
+    if (!res.ok) return new Map();
+    text = await res.text();
+  }
+  
   const lines = text.split('\n');
   if (lines.length < 3) return new Map();
   
@@ -75,6 +97,9 @@ function parseUsageInfo(text: string): KeyUsage {
 }
 
 export async function addKey(key: string): Promise<{ success: boolean; message?: string; error?: string }> {
+  if (isElectron) {
+    return window.oroio.keys.add(key);
+  }
   const res = await fetch('/api/add', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -84,6 +109,9 @@ export async function addKey(key: string): Promise<{ success: boolean; message?:
 }
 
 export async function removeKey(index: number): Promise<{ success: boolean; message?: string; error?: string }> {
+  if (isElectron) {
+    return window.oroio.keys.remove(index);
+  }
   const res = await fetch('/api/remove', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -93,6 +121,9 @@ export async function removeKey(index: number): Promise<{ success: boolean; mess
 }
 
 export async function useKey(index: number): Promise<{ success: boolean; message?: string; error?: string }> {
+  if (isElectron) {
+    return window.oroio.keys.use(index);
+  }
   const res = await fetch('/api/use', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -102,6 +133,29 @@ export async function useKey(index: number): Promise<{ success: boolean; message
 }
 
 export async function refreshCache(): Promise<{ success: boolean }> {
+  if (isElectron) {
+    return window.oroio.keys.refresh();
+  }
   const res = await fetch('/api/refresh', { method: 'POST' });
   return res.json();
+}
+
+// Type declaration for Electron window
+declare global {
+  interface Window {
+    oroio: {
+      keys: {
+        list: () => Promise<KeyInfo[]>;
+        current: () => Promise<KeyInfo | null>;
+        add: (key: string) => Promise<{ success: boolean; message?: string; error?: string }>;
+        remove: (index: number) => Promise<{ success: boolean; message?: string; error?: string }>;
+        use: (index: number) => Promise<{ success: boolean; message?: string; error?: string }>;
+        refresh: () => Promise<{ success: boolean; error?: string }>;
+      };
+      data: {
+        read: (filename: string) => Promise<ArrayBuffer | null>;
+      };
+      on: (channel: string, callback: (...args: unknown[]) => void) => () => void;
+    };
+  }
 }
