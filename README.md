@@ -42,7 +42,7 @@ droid
 
 Here's what `dk list` looks like:
 
-![CLI](imgs/cli.png)
+![CLI](assets/imgs/cli.png)
 
 ## Commands
 
@@ -69,7 +69,7 @@ dk serve status # Check if running
 
 Access at `http://localhost:7758` to view and manage keys visually.
 
-![Web Dashboard](imgs/web-dashboard.png)
+![Web Dashboard](assets/imgs/web-dashboard.png)
 
 ## Desktop App (Optional)
 

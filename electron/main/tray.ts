@@ -1,82 +1,84 @@
 import { Tray, Menu, nativeImage, app, NativeImage } from 'electron';
+import * as path from 'path';
 import { createMainWindow } from './index';
-import { useKey, maskKey, type KeyInfo } from './keyManager';
+import { useKey, maskKey, getKeyList, type KeyInfo } from './keyManager';
 
 let tray: Tray | null = null;
 
 function getTrayIcon(): NativeImage {
-  // 16x16 black filled circle for macOS menubar template image
-  const base64 = 'iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAA' +
-    'iklEQVQ4T2NkoBAwUqifYdAb8P/f/w2MDAxqDAwM/xkZGP7BMRiDxBgY/jMw' +
-    'MDL8h4v9Z2D8/5+RgQFqANgQBgYGJrAYnA/i/WdkRDGA4T/YdIgBcMkkGUCS' +
-    'AX9BBsBdQawBSAbAXQF3BdQAuBjIAOJcAfcHyAAiDYC7AuoFuBgKA4hyAQYA' +
-    'AM//KhER4OKUAAAASUVORK5CYII=';
+  const iconPath = app.isPackaged
+    ? path.join(process.resourcesPath, 'app.asar.unpacked', 'assets', 'trayTemplate.png')
+    : path.join(__dirname, '..', '..', 'assets', 'trayTemplate.png');
   
-  const icon = nativeImage.createFromDataURL(`data:image/png;base64,${base64}`);
+  const icon = nativeImage.createFromPath(iconPath);
   icon.setTemplateImage(true);
   return icon;
 }
 
+function getProgressBar(percent: number, width: number = 10): string {
+  const filled = Math.round((percent / 100) * width);
+  const empty = width - filled;
+  return '■'.repeat(filled) + '□'.repeat(empty);
+}
+
+function isValidKey(info: KeyInfo): boolean {
+  return !!(info.usage && info.usage.total && info.usage.total > 0);
+}
+
+function getPercent(info: KeyInfo): number {
+  if (!isValidKey(info)) return 0;
+  const used = info.usage!.used ?? 0;
+  return Math.round((used / info.usage!.total!) * 100);
+}
+
 function formatUsage(info: KeyInfo): string {
-  if (!info.usage || info.usage.total === null) {
-    return 'No usage data';
-  }
-  const used = info.usage.used ?? 0;
-  const total = info.usage.total;
-  const percent = Math.round((used / total) * 100);
-  return `${percent}% used · Expires: ${info.usage.expires}`;
+  if (!isValidKey(info)) return '';
+  const used = info.usage!.used ?? 0;
+  const total = info.usage!.total!;
+  const formatNum = (n: number) => n >= 1000000 ? `${Math.round(n / 1000000)}M` : `${Math.round(n / 1000)}K`;
+  return `${formatNum(used)}/${formatNum(total)}`;
 }
 
 function buildContextMenu(keys: KeyInfo[]): Menu {
   const template: Electron.MenuItemConstructorOptions[] = [];
-  
-  // Header
-  template.push({
-    label: 'oroio',
-    enabled: false,
-  });
-  template.push({ type: 'separator' });
-  
-  // Current key info
   const current = keys.find(k => k.isCurrent);
-  if (current) {
+  const others = keys.filter(k => !k.isCurrent);
+  
+  // All keys in one line each
+  for (const info of keys) {
+    const valid = isValidKey(info);
+    let label: string;
+    if (valid) {
+      const percent = getPercent(info);
+      const usage = formatUsage(info);
+      const mark = info.isCurrent ? '●' : '○';
+      label = `${mark}  ${maskKey(info.key)}\t${getProgressBar(percent, 8)}  ${usage}`;
+    } else {
+      const mark = info.isCurrent ? '●' : '○';
+      label = `${mark}  ${maskKey(info.key)}\t${getProgressBar(0, 8)}  Invalid`;
+    }
     template.push({
-      label: `Active: ${maskKey(current.key)}`,
-      enabled: false,
+      label,
+      click: info.isCurrent ? () => {} : async () => {
+        const result = await useKey(info.index);
+        if (result.success) {
+          const newKeys = await getKeyList();
+          updateTrayMenu(newKeys);
+        }
+      },
     });
-    template.push({
-      label: formatUsage(current),
-      enabled: false,
-    });
-    template.push({ type: 'separator' });
   }
   
-  // Key list
   if (keys.length > 0) {
-    template.push({
-      label: 'Switch Key',
-      submenu: keys.map(info => ({
-        label: `${info.index}. ${maskKey(info.key)}${info.isCurrent ? ' ✓' : ''}`,
-        type: 'radio' as const,
-        checked: info.isCurrent,
-        click: async () => {
-          if (!info.isCurrent) {
-            await useKey(info.index);
-          }
-        },
-      })),
-    });
     template.push({ type: 'separator' });
   }
   
   // Actions
   template.push({
-    label: 'Open Dashboard',
+    label: 'Dashboard',
     click: () => createMainWindow(),
     accelerator: 'CmdOrCtrl+O',
   });
-  
-  template.push({ type: 'separator' });
   
   template.push({
     label: 'Quit',

@@ -42,7 +42,7 @@ droid
 
 `dk list` 效果如下：
 
-![CLI](imgs/cli.png)
+![CLI](assets/imgs/cli.png)
 
 ## 命令
 
@@ -69,7 +69,7 @@ dk serve status # 检查运行状态
 
 访问 `http://localhost:7758` 可视化查看和管理密钥。
 
-![Web Dashboard](imgs/web-dashboard.png)
+![Web Dashboard](assets/imgs/web-dashboard.png)
 
 ## 桌面应用（可选）
 

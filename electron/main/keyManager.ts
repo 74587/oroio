@@ -197,8 +197,7 @@ export async function refreshCache(): Promise<{ success: boolean; error?: string
 }
 
 export function maskKey(key: string): string {
-  if (key.length <= 10) {
-    return key.slice(0, 3) + '***';
-  }
-  return key.slice(0, 6) + '...' + key.slice(-4);
+  const prefix = key.slice(0, 6).padEnd(6, 'x');
+  const suffix = key.length > 10 ? key.slice(-4) : 'xxxx';
+  return prefix + '...' + suffix;
 }

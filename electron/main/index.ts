@@ -32,13 +32,17 @@ export function createMainWindow(): BrowserWindow {
     return mainWindow;
   }
 
+  const iconPath = app.isPackaged
+    ? path.join(process.resourcesPath, 'app.asar.unpacked', 'assets', 'icon.png')
+    : path.join(__dirname, '..', '..', 'assets', 'icon.png');
+
   mainWindow = new BrowserWindow({
     width: 960,
     height: 680,
     minWidth: 800,
     minHeight: 500,
     show: false,
-
+    icon: iconPath,
     backgroundColor: nativeTheme.shouldUseDarkColors ? '#09090b' : '#ffffff',
     webPreferences: {
       preload: getPreloadPath(),
@@ -76,6 +80,13 @@ export function getMainWindow(): BrowserWindow | null {
 
 async function initApp() {
   console.log('[oroio] Starting app...');
+  
+  // Set dock icon on macOS (for dev mode)
+  if (process.platform === 'darwin' && !app.isPackaged) {
+    const iconPath = path.join(__dirname, '..', '..', 'assets', 'icon.png');
+    app.dock.setIcon(iconPath);
+  }
+  
   registerIpcHandlers();
   
   try {
