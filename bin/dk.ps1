@@ -82,6 +82,10 @@ function Ensure-Store {
     if (-not (Test-Path $script:CURRENT_FILE) -or (Get-Content $script:CURRENT_FILE -ErrorAction SilentlyContinue) -eq "") {
         Set-Content -Path $script:CURRENT_FILE -Value "1" -NoNewline
     }
+    # 确保缓存文件存在，避免首次访问 /data/list_cache.b64 返回 404
+    if (-not (Test-Path $script:CACHE_FILE)) {
+        New-Item -ItemType File -Path $script:CACHE_FILE -Force | Out-Null
+    }
 }
 
 function Derive-KeyAndIV {

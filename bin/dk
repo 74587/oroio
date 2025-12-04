@@ -42,6 +42,8 @@ die() { echo "错误: $*" >&2; exit 1; }
 ensure_store() {
   mkdir -p "$DKM_HOME"
   touch "$KEYS_ENC_FILE"
+   # 预先创建缓存文件，避免 web 端首次访问 /data/list_cache.b64 返回 404
+   [ -f "$DKM_CACHE_FILE" ] || : >"$DKM_CACHE_FILE"
   if [ ! -s "$CURRENT_FILE" ]; then echo 1 >"$CURRENT_FILE"; fi
 }
 
@@ -1080,6 +1082,8 @@ cmd_serve() {
 
   case "$subcmd" in
     start)
+      # 确保基础数据文件存在（keys.enc / current / list_cache.b64）
+      ensure_store
       [ -d "$web_dir" ] || die "Web目录不存在: ${web_dir}，请先放置打包好的React应用"
       [ -f "$web_dir/index.html" ] || die "未找到 $web_dir/index.html"
 

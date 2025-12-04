@@ -69,6 +69,17 @@ class OroioHandler(http.server.SimpleHTTPRequestHandler):
         filepath = os.path.join(self.oroio_dir, filename)
         
         if not os.path.isfile(filepath):
+            if filename == 'list_cache.b64':
+                # 首次启动缓存可能不存在，返回空内容避免 404 噪声
+                content = b''
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/octet-stream')
+                self.send_header('Content-Length', len(content))
+                self.send_header('Cache-Control', 'no-store, no-cache, must-revalidate')
+                self.send_header('Pragma', 'no-cache')
+                self.send_header('Expires', '0')
+                self.end_headers()
+                return
             self.send_error(404, 'Not Found')
             return
         
