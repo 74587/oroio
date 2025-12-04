@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
+import base64
+import concurrent.futures
 import hashlib
 import http.server
 import json
 import os
 import secrets
-import shutil
 import subprocess
 import sys
-from pathlib import Path
+import urllib.request
+import urllib.error
 from urllib.parse import unquote
 
 SALT = b"oroio"
@@ -104,6 +106,71 @@ def encrypt_keys(keys: list, keys_file: str):
     with open(keys_file, 'wb') as f:
         f.write(b'Salted__' + salt + ciphertext)
 
+API_URL = 'https://app.factory.ai/api/organization/members/chat-usage'
+API_TIMEOUT = 4
+
+def fetch_usage(key: str) -> dict:
+    """获取单个 key 的用量信息"""
+    result = {'BALANCE': 0, 'BALANCE_NUM': 0, 'TOTAL': 0, 'USED': 0, 'EXPIRES': '?', 'RAW': ''}
+    try:
+        req = urllib.request.Request(API_URL, headers={
+            'Authorization': f'Bearer {key}',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        })
+        with urllib.request.urlopen(req, timeout=API_TIMEOUT) as resp:
+            data = json.loads(resp.read().decode('utf-8'))
+        usage = data.get('usage')
+        if not usage:
+            result['RAW'] = 'no_usage'
+            return result
+        section = usage.get('standard') or usage.get('premium') or usage.get('total') or usage.get('main')
+        if section:
+            total = section.get('totalAllowance') or section.get('basicAllowance') or section.get('allowance')
+            used = section.get('orgTotalTokensUsed') or section.get('used') or section.get('tokensUsed') or 0
+            used += section.get('orgOverageUsed') or 0
+            if total is not None:
+                result['TOTAL'] = int(total)
+                result['USED'] = int(used)
+                result['BALANCE_NUM'] = int(total - used)
+                result['BALANCE'] = result['BALANCE_NUM']
+        exp_raw = usage.get('endDate') or usage.get('expire_at') or usage.get('expires_at')
+        if exp_raw is not None:
+            if isinstance(exp_raw, (int, float)) or (isinstance(exp_raw, str) and exp_raw.isdigit()):
+                from datetime import datetime
+                result['EXPIRES'] = datetime.utcfromtimestamp(int(exp_raw) / 1000).strftime('%Y-%m-%d')
+            else:
+                result['EXPIRES'] = str(exp_raw)
+    except Exception:
+        result['RAW'] = 'http_error'
+        result['EXPIRES'] = 'Invalid key'
+    return result
+
+def fetch_all_usages(keys: list) -> list:
+    """并发获取所有 key 的用量"""
+    max_workers = min(6, len(keys)) if keys else 1
+    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+        return list(executor.map(fetch_usage, keys))
+
+def write_cache(keys_file: str, cache_file: str, keys: list, usages: list):
+    """写入缓存文件，格式与 dk/dk.ps1 兼容"""
+    import time
+    now = int(time.time())
+    keys_hash = hashlib.sha1(open(keys_file, 'rb').read()).hexdigest()
+    lines = [str(now), keys_hash]
+    for i, u in enumerate(usages):
+        info = '\n'.join([
+            f"BALANCE={u.get('BALANCE', 0)}",
+            f"BALANCE_NUM={u.get('BALANCE_NUM', 0)}",
+            f"TOTAL={u.get('TOTAL', 0)}",
+            f"USED={u.get('USED', 0)}",
+            f"EXPIRES={u.get('EXPIRES', '?')}",
+            f"RAW={u.get('RAW', '')}"
+        ])
+        b64 = base64.b64encode(info.encode('utf-8')).decode('ascii')
+        lines.append(f"{i}\t{b64}")
+    with open(cache_file, 'w') as f:
+        f.write('\n'.join(lines))
+
 class OroioHandler(http.server.SimpleHTTPRequestHandler):
     def __init__(self, *args, oroio_dir=None, dk_path=None, **kwargs):
         self.oroio_dir = oroio_dir
@@ -112,13 +179,6 @@ class OroioHandler(http.server.SimpleHTTPRequestHandler):
         self.current_file = os.path.join(oroio_dir, 'current')
         self.cache_file = os.path.join(oroio_dir, 'list_cache.b64')
         super().__init__(*args, **kwargs)
-
-    def _dk_cmd(self, sub_args):
-        """构造跨平台可执行的 dk 调用命令（仅用于 list 刷新缓存）"""
-        if os.name == 'nt' and self.dk_path.lower().endswith('.ps1'):
-            shell = 'pwsh' if shutil.which('pwsh') else 'powershell'
-            return [shell, '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', self.dk_path, *sub_args]
-        return [self.dk_path, *sub_args]
     
     def _invalidate_cache(self):
         """删除缓存文件"""
@@ -260,14 +320,13 @@ class OroioHandler(http.server.SimpleHTTPRequestHandler):
     
     def handle_refresh(self):
         try:
-            result = subprocess.run(
-                self._dk_cmd(['list']),
-                capture_output=True, text=True, timeout=30
-            )
-            if result.returncode == 0:
+            keys = decrypt_keys(self.keys_file)
+            if not keys:
                 self.send_json({'success': True})
-            else:
-                self.send_json({'success': False, 'error': result.stderr.strip() or result.stdout.strip()})
+                return
+            usages = fetch_all_usages(keys)
+            write_cache(self.keys_file, self.cache_file, keys, usages)
+            self.send_json({'success': True})
         except Exception as e:
             self.send_json({'success': False, 'error': str(e)})
     
