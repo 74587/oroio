@@ -56,8 +56,19 @@ function Ensure-Store {
     if (-not (Test-Path $script:OROIO_DIR)) {
         New-Item -ItemType Directory -Path $script:OROIO_DIR -Force | Out-Null
     }
+    $needInitKeys = $false
     if (-not (Test-Path $script:KEYS_FILE)) {
-        New-Item -ItemType File -Path $script:KEYS_FILE -Force | Out-Null
+        $needInitKeys = $true
+    }
+    else {
+        try {
+            $len = (Get-Item $script:KEYS_FILE).Length
+            if ($len -lt 17) { $needInitKeys = $true }
+        } catch { $needInitKeys = $true }
+    }
+    if ($needInitKeys) {
+        $encryptedEmpty = Encrypt-Keys -Keys @()
+        [System.IO.File]::WriteAllBytes($script:KEYS_FILE, $encryptedEmpty)
     }
     if (-not (Test-Path $script:CURRENT_FILE) -or (Get-Content $script:CURRENT_FILE -ErrorAction SilentlyContinue) -eq "") {
         Set-Content -Path $script:CURRENT_FILE -Value "1" -NoNewline
@@ -656,10 +667,10 @@ function Cmd-Serve {
         }
         "stop" {
             if (-not (Test-Path $pidFile)) { Write-Host "服务未运行"; return }
-            $pid = Get-Content $pidFile -ErrorAction SilentlyContinue
-            if ($pid -and (Get-Process -Id $pid -ErrorAction SilentlyContinue)) {
-                Stop-Process -Id $pid -Force -ErrorAction SilentlyContinue
-                Write-Host "服务已停止 (PID: $pid)"
+            $servePid = Get-Content $pidFile -ErrorAction SilentlyContinue
+            if ($servePid -and (Get-Process -Id $servePid -ErrorAction SilentlyContinue)) {
+                Stop-Process -Id $servePid -Force -ErrorAction SilentlyContinue
+                Write-Host "服务已停止 (PID: $servePid)"
             }
             else {
                 Write-Host "服务未运行（已清理旧PID文件）"
@@ -668,9 +679,9 @@ function Cmd-Serve {
         }
         "status" {
             if (Test-Path $pidFile) {
-                $pid = Get-Content $pidFile -ErrorAction SilentlyContinue
-                if ($pid -and (Get-Process -Id $pid -ErrorAction SilentlyContinue)) {
-                    Write-Host "服务运行中 (PID: $pid)"
+                $servePid = Get-Content $pidFile -ErrorAction SilentlyContinue
+                if ($servePid -and (Get-Process -Id $servePid -ErrorAction SilentlyContinue)) {
+                    Write-Host "服务运行中 (PID: $servePid)"
                     Write-Host ("访问: http://localhost:{0}" -f $port)
                     return
                 }
