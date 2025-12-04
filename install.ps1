@@ -70,7 +70,8 @@ if (-not (Test-Path $profilePath)) {
 }
 
 $existingProfile = Get-Content $profilePath -Raw -ErrorAction SilentlyContinue
-if ($existingProfile -notlike "*# dk (droid key manager)*") {
+$needsInsert = [string]::IsNullOrWhiteSpace($existingProfile) -or $existingProfile -notlike "*# dk (droid key manager)*"
+if ($needsInsert) {
     Write-Info "Configuring PowerShell profile..."
     Add-Content -Path $profilePath -Value $profileContent
 }
