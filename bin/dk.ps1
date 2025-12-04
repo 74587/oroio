@@ -622,6 +622,8 @@ function Cmd-Serve {
     switch ($subcmd) {
         "start" {
             if (-not (Test-Path $serveScript)) { Write-ErrorExit "未找到 serve.py ($serveScript)" }
+            # 确保数据目录和基础文件存在（keys.enc、current 等）
+            Ensure-Store
             Ensure-WebAssets -WebDir $webDir
             
             if (Test-Path $pidFile) {
