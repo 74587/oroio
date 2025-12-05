@@ -140,6 +140,212 @@ export async function refreshCache(): Promise<{ success: boolean }> {
   return res.json();
 }
 
+export interface Skill {
+  name: string;
+  path: string;
+}
+
+export interface Command {
+  name: string;
+  path: string;
+  description?: string;
+  content?: string;
+}
+
+export interface Droid {
+  name: string;
+  path: string;
+}
+
+export interface McpServer {
+  name: string;
+  type?: 'stdio' | 'http';
+  command?: string;
+  args?: string[];
+  url?: string;
+  env?: Record<string, string>;
+}
+
+// Skills API
+export async function listSkills(): Promise<Skill[]> {
+  if (isElectron) {
+    return window.oroio.listSkills();
+  }
+  const res = await fetch('/api/skills/list', { method: 'POST' });
+  return res.json();
+}
+
+export async function createSkill(name: string): Promise<void> {
+  if (isElectron) {
+    return window.oroio.createSkill(name);
+  }
+  const res = await fetch('/api/skills/create', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name }),
+  });
+  const data = await res.json();
+  if (!data.success) throw new Error(data.error);
+}
+
+export async function deleteSkill(name: string): Promise<void> {
+  if (isElectron) {
+    return window.oroio.deleteSkill(name);
+  }
+  const res = await fetch('/api/skills/delete', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name }),
+  });
+  const data = await res.json();
+  if (!data.success) throw new Error(data.error);
+}
+
+// Commands API
+export async function listCommands(): Promise<Command[]> {
+  if (isElectron) {
+    return window.oroio.listCommands();
+  }
+  const res = await fetch('/api/commands/list', { method: 'POST' });
+  return res.json();
+}
+
+export async function createCommand(name: string): Promise<void> {
+  if (isElectron) {
+    return window.oroio.createCommand(name);
+  }
+  const res = await fetch('/api/commands/create', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name }),
+  });
+  const data = await res.json();
+  if (!data.success) throw new Error(data.error);
+}
+
+export async function deleteCommand(name: string): Promise<void> {
+  if (isElectron) {
+    return window.oroio.deleteCommand(name);
+  }
+  const res = await fetch('/api/commands/delete', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name }),
+  });
+  const data = await res.json();
+  if (!data.success) throw new Error(data.error);
+}
+
+export async function getCommandContent(name: string): Promise<string> {
+  if (isElectron) {
+    return window.oroio.getCommandContent(name);
+  }
+  const res = await fetch('/api/commands/content', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name }),
+  });
+  const data = await res.json();
+  if (data.error) throw new Error(data.error);
+  return data.content;
+}
+
+export async function updateCommand(name: string, content: string): Promise<void> {
+  if (isElectron) {
+    return window.oroio.updateCommand(name, content);
+  }
+  const res = await fetch('/api/commands/update', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, content }),
+  });
+  const data = await res.json();
+  if (!data.success) throw new Error(data.error);
+}
+
+// Droids API
+export async function listDroids(): Promise<Droid[]> {
+  if (isElectron) {
+    return window.oroio.listDroids();
+  }
+  const res = await fetch('/api/droids/list', { method: 'POST' });
+  return res.json();
+}
+
+export async function createDroid(name: string): Promise<void> {
+  if (isElectron) {
+    return window.oroio.createDroid(name);
+  }
+  const res = await fetch('/api/droids/create', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name }),
+  });
+  const data = await res.json();
+  if (!data.success) throw new Error(data.error);
+}
+
+export async function deleteDroid(name: string): Promise<void> {
+  if (isElectron) {
+    return window.oroio.deleteDroid(name);
+  }
+  const res = await fetch('/api/droids/delete', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name }),
+  });
+  const data = await res.json();
+  if (!data.success) throw new Error(data.error);
+}
+
+// MCP API
+export async function listMcpServers(): Promise<McpServer[]> {
+  if (isElectron) {
+    return window.oroio.listMcpServers();
+  }
+  const res = await fetch('/api/mcp/list', { method: 'POST' });
+  return res.json();
+}
+
+export async function addMcpServer(name: string, command: string, args: string[]): Promise<void> {
+  if (isElectron) {
+    return window.oroio.addMcpServer(name, command, args);
+  }
+  const res = await fetch('/api/mcp/add', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, command, args }),
+  });
+  const data = await res.json();
+  if (!data.success) throw new Error(data.error);
+}
+
+export async function removeMcpServer(name: string): Promise<void> {
+  if (isElectron) {
+    return window.oroio.removeMcpServer(name);
+  }
+  const res = await fetch('/api/mcp/remove', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name }),
+  });
+  const data = await res.json();
+  if (!data.success) throw new Error(data.error);
+}
+
+export async function updateMcpServer(name: string, config: Omit<McpServer, 'name'>): Promise<void> {
+  if (isElectron) {
+    return window.oroio.updateMcpServer(name, config);
+  }
+  const res = await fetch('/api/mcp/update', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, config }),
+  });
+  const data = await res.json();
+  if (!data.success) throw new Error(data.error);
+}
+
 // Type declaration for Electron window
 declare global {
   interface Window {
@@ -156,6 +362,28 @@ declare global {
         read: (filename: string) => Promise<ArrayBuffer | null>;
       };
       on: (channel: string, callback: (...args: unknown[]) => void) => () => void;
+      // Skills
+      listSkills: () => Promise<Skill[]>;
+      createSkill: (name: string) => Promise<void>;
+      deleteSkill: (name: string) => Promise<void>;
+      // Commands
+      listCommands: () => Promise<Command[]>;
+      createCommand: (name: string) => Promise<void>;
+      deleteCommand: (name: string) => Promise<void>;
+      getCommandContent: (name: string) => Promise<string>;
+      updateCommand: (name: string, content: string) => Promise<void>;
+      // Droids
+      listDroids: () => Promise<Droid[]>;
+      createDroid: (name: string) => Promise<void>;
+      deleteDroid: (name: string) => Promise<void>;
+      // MCP
+      listMcpServers: () => Promise<McpServer[]>;
+      addMcpServer: (name: string, command: string, args: string[]) => Promise<void>;
+      removeMcpServer: (name: string) => Promise<void>;
+      updateMcpServer: (name: string, config: Omit<McpServer, 'name'>) => Promise<void>;
+      openMcpConfig: () => Promise<void>;
+      // Utilities
+      openPath: (path: string) => Promise<void>;
     };
   }
 }

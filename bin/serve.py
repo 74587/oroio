@@ -108,6 +108,7 @@ def encrypt_keys(keys: list, keys_file: str):
 
 API_URL = 'https://app.factory.ai/api/organization/members/chat-usage'
 API_TIMEOUT = 4
+FACTORY_DIR = os.path.join(os.path.expanduser('~'), '.factory')
 
 def fetch_usage(key: str) -> dict:
     """获取单个 key 的用量信息"""
@@ -224,6 +225,34 @@ class OroioHandler(http.server.SimpleHTTPRequestHandler):
             self.handle_use_key(data)
         elif path == '/api/refresh':
             self.handle_refresh()
+        # Skills
+        elif path == '/api/skills/list':
+            self.handle_list_skills()
+        elif path == '/api/skills/create':
+            self.handle_create_skill(data)
+        elif path == '/api/skills/delete':
+            self.handle_delete_skill(data)
+        # Commands
+        elif path == '/api/commands/list':
+            self.handle_list_commands()
+        elif path == '/api/commands/create':
+            self.handle_create_command(data)
+        elif path == '/api/commands/delete':
+            self.handle_delete_command(data)
+        # Droids
+        elif path == '/api/droids/list':
+            self.handle_list_droids()
+        elif path == '/api/droids/create':
+            self.handle_create_droid(data)
+        elif path == '/api/droids/delete':
+            self.handle_delete_droid(data)
+        # MCP
+        elif path == '/api/mcp/list':
+            self.handle_list_mcp()
+        elif path == '/api/mcp/add':
+            self.handle_add_mcp(data)
+        elif path == '/api/mcp/remove':
+            self.handle_remove_mcp(data)
         else:
             self.send_error(404, 'Not Found')
     
@@ -337,6 +366,195 @@ class OroioHandler(http.server.SimpleHTTPRequestHandler):
         self.send_header('Content-Length', len(body))
         self.end_headers()
         self.wfile.write(body)
+    
+    # Skills handlers
+    def handle_list_skills(self):
+        skills_dir = os.path.join(FACTORY_DIR, 'skills')
+        skills = []
+        try:
+            real_dir = os.path.realpath(skills_dir)
+            for entry in os.listdir(real_dir):
+                entry_path = os.path.join(real_dir, entry)
+                if os.path.isdir(entry_path):
+                    skill_file = os.path.join(entry_path, 'SKILL.md')
+                    if os.path.isfile(skill_file):
+                        skills.append({'name': entry, 'path': skill_file})
+        except:
+            pass
+        self.send_json(skills)
+    
+    def handle_create_skill(self, data):
+        name = data.get('name', '').strip()
+        if not name:
+            self.send_json({'success': False, 'error': 'Name is required'})
+            return
+        try:
+            skill_dir = os.path.join(FACTORY_DIR, 'skills', name)
+            os.makedirs(skill_dir, exist_ok=True)
+            skill_file = os.path.join(skill_dir, 'SKILL.md')
+            with open(skill_file, 'w') as f:
+                f.write(f'# {name}\n\nDescribe your skill instructions here.\n')
+            self.send_json({'success': True})
+        except Exception as e:
+            self.send_json({'success': False, 'error': str(e)})
+    
+    def handle_delete_skill(self, data):
+        name = data.get('name', '').strip()
+        if not name:
+            self.send_json({'success': False, 'error': 'Name is required'})
+            return
+        try:
+            import shutil
+            skill_dir = os.path.join(FACTORY_DIR, 'skills', name)
+            shutil.rmtree(skill_dir)
+            self.send_json({'success': True})
+        except Exception as e:
+            self.send_json({'success': False, 'error': str(e)})
+    
+    # Commands handlers
+    def handle_list_commands(self):
+        commands_dir = os.path.join(FACTORY_DIR, 'commands')
+        commands = []
+        try:
+            real_dir = os.path.realpath(commands_dir)
+            for entry in os.listdir(real_dir):
+                if entry.endswith('.md'):
+                    full_path = os.path.join(real_dir, entry)
+                    if os.path.isfile(full_path):
+                        commands.append({'name': entry[:-3], 'path': full_path})
+        except:
+            pass
+        self.send_json(commands)
+    
+    def handle_create_command(self, data):
+        name = data.get('name', '').strip()
+        if not name:
+            self.send_json({'success': False, 'error': 'Name is required'})
+            return
+        try:
+            commands_dir = os.path.join(FACTORY_DIR, 'commands')
+            os.makedirs(commands_dir, exist_ok=True)
+            cmd_file = os.path.join(commands_dir, f'{name}.md')
+            with open(cmd_file, 'w') as f:
+                f.write(f'# /{name}\n\nCommand instructions here.\n')
+            self.send_json({'success': True})
+        except Exception as e:
+            self.send_json({'success': False, 'error': str(e)})
+    
+    def handle_delete_command(self, data):
+        name = data.get('name', '').strip()
+        if not name:
+            self.send_json({'success': False, 'error': 'Name is required'})
+            return
+        try:
+            cmd_file = os.path.join(FACTORY_DIR, 'commands', f'{name}.md')
+            os.remove(cmd_file)
+            self.send_json({'success': True})
+        except Exception as e:
+            self.send_json({'success': False, 'error': str(e)})
+    
+    # Droids handlers
+    def handle_list_droids(self):
+        droids_dir = os.path.join(FACTORY_DIR, 'droids')
+        droids = []
+        try:
+            real_dir = os.path.realpath(droids_dir)
+            for entry in os.listdir(real_dir):
+                if entry.endswith('.md'):
+                    full_path = os.path.join(real_dir, entry)
+                    if os.path.isfile(full_path):
+                        droids.append({'name': entry[:-3], 'path': full_path})
+        except:
+            pass
+        self.send_json(droids)
+    
+    def handle_create_droid(self, data):
+        name = data.get('name', '').strip()
+        if not name:
+            self.send_json({'success': False, 'error': 'Name is required'})
+            return
+        try:
+            droids_dir = os.path.join(FACTORY_DIR, 'droids')
+            os.makedirs(droids_dir, exist_ok=True)
+            droid_file = os.path.join(droids_dir, f'{name}.md')
+            with open(droid_file, 'w') as f:
+                f.write(f'---\nname: {name}\ndescription: A custom droid\n---\n\n# {name}\n\nDroid instructions here.\n')
+            self.send_json({'success': True})
+        except Exception as e:
+            self.send_json({'success': False, 'error': str(e)})
+    
+    def handle_delete_droid(self, data):
+        name = data.get('name', '').strip()
+        if not name:
+            self.send_json({'success': False, 'error': 'Name is required'})
+            return
+        try:
+            droid_file = os.path.join(FACTORY_DIR, 'droids', f'{name}.md')
+            os.remove(droid_file)
+            self.send_json({'success': True})
+        except Exception as e:
+            self.send_json({'success': False, 'error': str(e)})
+    
+    # MCP handlers
+    def handle_list_mcp(self):
+        mcp_file = os.path.join(FACTORY_DIR, 'mcp.json')
+        servers = []
+        try:
+            with open(mcp_file, 'r') as f:
+                config = json.load(f)
+            if 'mcpServers' in config:
+                for name, server in config['mcpServers'].items():
+                    servers.append({
+                        'name': name,
+                        'command': server.get('command', ''),
+                        'args': server.get('args', []),
+                        'env': server.get('env', {})
+                    })
+        except:
+            pass
+        self.send_json(servers)
+    
+    def handle_add_mcp(self, data):
+        name = data.get('name', '').strip()
+        command = data.get('command', '').strip()
+        args = data.get('args', [])
+        if not name or not command:
+            self.send_json({'success': False, 'error': 'Name and command are required'})
+            return
+        try:
+            mcp_file = os.path.join(FACTORY_DIR, 'mcp.json')
+            config = {'mcpServers': {}}
+            try:
+                with open(mcp_file, 'r') as f:
+                    config = json.load(f)
+                if 'mcpServers' not in config:
+                    config['mcpServers'] = {}
+            except:
+                pass
+            config['mcpServers'][name] = {'command': command, 'args': args}
+            os.makedirs(FACTORY_DIR, exist_ok=True)
+            with open(mcp_file, 'w') as f:
+                json.dump(config, f, indent=2)
+            self.send_json({'success': True})
+        except Exception as e:
+            self.send_json({'success': False, 'error': str(e)})
+    
+    def handle_remove_mcp(self, data):
+        name = data.get('name', '').strip()
+        if not name:
+            self.send_json({'success': False, 'error': 'Name is required'})
+            return
+        try:
+            mcp_file = os.path.join(FACTORY_DIR, 'mcp.json')
+            with open(mcp_file, 'r') as f:
+                config = json.load(f)
+            if 'mcpServers' in config and name in config['mcpServers']:
+                del config['mcpServers'][name]
+                with open(mcp_file, 'w') as f:
+                    json.dump(config, f, indent=2)
+            self.send_json({'success': True})
+        except Exception as e:
+            self.send_json({'success': False, 'error': str(e)})
     
     def log_message(self, format, *args):
         pass
