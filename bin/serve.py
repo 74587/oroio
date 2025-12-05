@@ -351,7 +351,7 @@ def run(port, web_dir, oroio_dir, dk_path):
         *args, oroio_dir=oroio_dir, dk_path=dk_path, **kwargs
     )
     
-    with http.server.HTTPServer(('127.0.0.1', port), handler) as httpd:
+    with http.server.HTTPServer(('0.0.0.0', port), handler) as httpd:
         httpd.serve_forever()
 
 if __name__ == '__main__':
