@@ -25,3 +25,4 @@ dist-ssr
 
 # Electron build output
 electron/release/
+bin/__pycache__/

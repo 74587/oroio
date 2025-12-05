@@ -6,6 +6,7 @@ import http.server
 import json
 import os
 import platform
+import secrets
 import subprocess
 import sys
 import urllib.request
@@ -13,6 +14,8 @@ import urllib.error
 from urllib.parse import unquote
 
 SALT = b"oroio"
+VALID_TOKENS = set()  # In-memory token storage
+PIN_HASH = None  # Will be set on startup
 ITERATIONS = 10000
 IS_WINDOWS = platform.system() == 'Windows'
 
@@ -188,6 +191,21 @@ class OroioHandler(http.server.SimpleHTTPRequestHandler):
         self.cache_file = os.path.join(oroio_dir, 'list_cache.b64')
         super().__init__(*args, **kwargs)
     
+    def _check_auth(self) -> bool:
+        """Check if request has valid auth token. Returns True if PIN is not set or token is valid."""
+        global PIN_HASH, VALID_TOKENS
+        if PIN_HASH is None:
+            return True
+        token = self.headers.get('X-Auth-Token', '')
+        return token in VALID_TOKENS
+    
+    def _send_unauthorized(self):
+        """Send 401 Unauthorized response"""
+        self.send_response(401)
+        self.send_header('Content-Type', 'application/json')
+        self.end_headers()
+        self.wfile.write(json.dumps({'error': 'Unauthorized'}).encode('utf-8'))
+    
     def _invalidate_cache(self):
         """删除缓存文件"""
         try:
@@ -223,6 +241,19 @@ class OroioHandler(http.server.SimpleHTTPRequestHandler):
             data = json.loads(body) if body else {}
         except:
             data = {}
+        
+        # Auth endpoints (no auth required)
+        if path == '/api/auth':
+            self.handle_auth(data)
+            return
+        elif path == '/api/auth/check':
+            self.handle_auth_check()
+            return
+        
+        # All other endpoints require auth
+        if not self._check_auth():
+            self._send_unauthorized()
+            return
         
         if path == '/api/add':
             self.handle_add_key(data)
@@ -268,6 +299,37 @@ class OroioHandler(http.server.SimpleHTTPRequestHandler):
             self.handle_update_mcp(data)
         else:
             self.send_error(404, 'Not Found')
+    
+    def handle_auth(self, data):
+        """Handle PIN authentication"""
+        global PIN_HASH, VALID_TOKENS
+        pin = data.get('pin', '')
+        if PIN_HASH is None:
+            # No PIN set, generate token anyway
+            token = secrets.token_hex(32)
+            if len(VALID_TOKENS) > 100:
+                VALID_TOKENS.pop()
+            VALID_TOKENS.add(token)
+            self.send_json({'success': True, 'token': token, 'required': False})
+            return
+        if hashlib.sha256(pin.encode()).hexdigest() == PIN_HASH:
+            token = secrets.token_hex(32)
+            if len(VALID_TOKENS) > 100:
+                VALID_TOKENS.pop()
+            VALID_TOKENS.add(token)
+            self.send_json({'success': True, 'token': token})
+        else:
+            self.send_json({'success': False, 'error': 'Invalid PIN'})
+    
+    def handle_auth_check(self):
+        """Check if PIN is required and if current token is valid"""
+        global PIN_HASH
+        if PIN_HASH is None:
+            self.send_json({'required': False, 'authenticated': True})
+        elif self._check_auth():
+            self.send_json({'required': True, 'authenticated': True})
+        else:
+            self.send_json({'required': True, 'authenticated': False})
     
     def serve_oroio_file(self, filename):
         if '..' in filename or filename.startswith('/'):
@@ -639,7 +701,9 @@ class OroioHandler(http.server.SimpleHTTPRequestHandler):
     def log_message(self, format, *args):
         pass
 
-def run(port, web_dir, oroio_dir, dk_path):
+def run(port, web_dir, oroio_dir, dk_path, pin_hash=None):
+    global PIN_HASH
+    PIN_HASH = pin_hash
     os.chdir(web_dir)
     
     handler = lambda *args, **kwargs: OroioHandler(
@@ -650,12 +714,13 @@ def run(port, web_dir, oroio_dir, dk_path):
         httpd.serve_forever()
 
 if __name__ == '__main__':
-    if len(sys.argv) != 5:
-        print('Usage: serve.py <port> <web_dir> <oroio_dir> <dk_path>')
+    if len(sys.argv) < 5:
+        print('Usage: serve.py <port> <web_dir> <oroio_dir> <dk_path> [pin_hash]')
         sys.exit(1)
     
     port = int(sys.argv[1])
     web_dir = sys.argv[2]
     oroio_dir = sys.argv[3]
     dk_path = sys.argv[4]
-    run(port, web_dir, oroio_dir, dk_path)
+    pin_hash = sys.argv[5] if len(sys.argv) > 5 else None
+    run(port, web_dir, oroio_dir, dk_path, pin_hash)

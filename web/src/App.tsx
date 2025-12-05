@@ -5,8 +5,10 @@ import SkillsManager from '@/components/SkillsManager';
 import CommandsManager from '@/components/CommandsManager';
 import DroidsManager from '@/components/DroidsManager';
 import McpManager from '@/components/McpManager';
+import PinDialog from '@/components/PinDialog';
 import { cn } from '@/lib/utils';
 import { Kbd } from '@/components/ui/kbd';
+import { checkAuth, authenticate, isElectron } from '@/utils/api';
 
 type Tab = 'keys' | 'commands' | 'skills' | 'droids' | 'mcp';
 
@@ -29,6 +31,40 @@ export default function App() {
   });
   const [fakePid] = useState(() => Math.floor(Math.random() * 9000) + 1000);
   const [fakeMemory] = useState(() => Math.floor(Math.random() * 50) + 20);
+  
+  // Auth state
+  const [authChecking, setAuthChecking] = useState(true);
+  const [authenticated, setAuthenticated] = useState(false);
+  const [authRequired, setAuthRequired] = useState(false);
+  const [authError, setAuthError] = useState<string | undefined>();
+
+  // Check auth on mount
+  useEffect(() => {
+    if (isElectron) {
+      setAuthenticated(true);
+      setAuthChecking(false);
+      return;
+    }
+    checkAuth().then(result => {
+      setAuthRequired(result.required);
+      setAuthenticated(result.authenticated);
+      setAuthChecking(false);
+    }).catch(() => {
+      setAuthChecking(false);
+      setAuthenticated(true); // Assume no auth if check fails
+    });
+  }, []);
+
+  const handlePinSubmit = async (pin: string): Promise<boolean> => {
+    setAuthError(undefined);
+    const result = await authenticate(pin);
+    if (result.success) {
+      setAuthenticated(true);
+      return true;
+    }
+    setAuthError(result.error || 'Invalid PIN');
+    return false;
+  };
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
@@ -62,7 +98,12 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleKeyDown]);
 
-  if (!mounted) return null;
+  if (!mounted || authChecking) return null;
+
+  // Show PIN dialog if auth is required but not authenticated
+  if (authRequired && !authenticated) {
+    return <PinDialog onSubmit={handlePinSubmit} error={authError} />;
+  }
 
   return (
     <div className="min-h-screen bg-background text-foreground font-mono p-4 md:p-8 selection:bg-primary selection:text-primary-foreground relative overflow-hidden transition-colors duration-300">

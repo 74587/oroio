@@ -16,6 +16,59 @@ export interface KeyInfo {
 // Detect if running in Electron
 export const isElectron = typeof window !== 'undefined' && 'oroio' in window;
 
+// Auth token management
+const AUTH_TOKEN_KEY = 'oroio-auth-token';
+
+export function getAuthToken(): string | null {
+  return sessionStorage.getItem(AUTH_TOKEN_KEY);
+}
+
+export function setAuthToken(token: string): void {
+  sessionStorage.setItem(AUTH_TOKEN_KEY, token);
+}
+
+export function clearAuthToken(): void {
+  sessionStorage.removeItem(AUTH_TOKEN_KEY);
+}
+
+function getAuthHeaders(): Record<string, string> {
+  const token = getAuthToken();
+  return token ? { 'X-Auth-Token': token } : {};
+}
+
+// Auth API
+export interface AuthCheckResult {
+  required: boolean;
+  authenticated: boolean;
+}
+
+export async function checkAuth(): Promise<AuthCheckResult> {
+  if (isElectron) {
+    return { required: false, authenticated: true };
+  }
+  const res = await fetch('/api/auth/check', {
+    method: 'POST',
+    headers: { ...getAuthHeaders() },
+  });
+  return res.json();
+}
+
+export async function authenticate(pin: string): Promise<{ success: boolean; token?: string; error?: string }> {
+  if (isElectron) {
+    return { success: true };
+  }
+  const res = await fetch('/api/auth', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ pin }),
+  });
+  const data = await res.json();
+  if (data.success && data.token) {
+    setAuthToken(data.token);
+  }
+  return data;
+}
+
 export async function fetchEncryptedKeys(): Promise<ArrayBuffer> {
   if (isElectron) {
     const data = await window.oroio.data.read('keys.enc');
@@ -102,7 +155,7 @@ export async function addKey(key: string): Promise<{ success: boolean; message?:
   }
   const res = await fetch('/api/add', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
     body: JSON.stringify({ key }),
   });
   return res.json();
@@ -114,7 +167,7 @@ export async function removeKey(index: number): Promise<{ success: boolean; mess
   }
   const res = await fetch('/api/remove', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
     body: JSON.stringify({ index }),
   });
   return res.json();
@@ -126,7 +179,7 @@ export async function useKey(index: number): Promise<{ success: boolean; message
   }
   const res = await fetch('/api/use', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
     body: JSON.stringify({ index }),
   });
   return res.json();
@@ -136,7 +189,7 @@ export async function refreshCache(): Promise<{ success: boolean }> {
   if (isElectron) {
     return window.oroio.keys.refresh();
   }
-  const res = await fetch('/api/refresh', { method: 'POST' });
+  const res = await fetch('/api/refresh', { method: 'POST', headers: getAuthHeaders() });
   return res.json();
 }
 
@@ -171,7 +224,7 @@ export async function listSkills(): Promise<Skill[]> {
   if (isElectron) {
     return window.oroio.listSkills();
   }
-  const res = await fetch('/api/skills/list', { method: 'POST' });
+  const res = await fetch('/api/skills/list', { method: 'POST', headers: getAuthHeaders() });
   return res.json();
 }
 
@@ -181,7 +234,7 @@ export async function createSkill(name: string): Promise<void> {
   }
   const res = await fetch('/api/skills/create', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
     body: JSON.stringify({ name }),
   });
   const data = await res.json();
@@ -194,7 +247,7 @@ export async function deleteSkill(name: string): Promise<void> {
   }
   const res = await fetch('/api/skills/delete', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
     body: JSON.stringify({ name }),
   });
   const data = await res.json();
@@ -206,7 +259,7 @@ export async function listCommands(): Promise<Command[]> {
   if (isElectron) {
     return window.oroio.listCommands();
   }
-  const res = await fetch('/api/commands/list', { method: 'POST' });
+  const res = await fetch('/api/commands/list', { method: 'POST', headers: getAuthHeaders() });
   return res.json();
 }
 
@@ -216,7 +269,7 @@ export async function createCommand(name: string): Promise<void> {
   }
   const res = await fetch('/api/commands/create', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
     body: JSON.stringify({ name }),
   });
   const data = await res.json();
@@ -229,7 +282,7 @@ export async function deleteCommand(name: string): Promise<void> {
   }
   const res = await fetch('/api/commands/delete', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
     body: JSON.stringify({ name }),
   });
   const data = await res.json();
@@ -242,7 +295,7 @@ export async function getCommandContent(name: string): Promise<string> {
   }
   const res = await fetch('/api/commands/content', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
     body: JSON.stringify({ name }),
   });
   const data = await res.json();
@@ -256,7 +309,7 @@ export async function updateCommand(name: string, content: string): Promise<void
   }
   const res = await fetch('/api/commands/update', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
     body: JSON.stringify({ name, content }),
   });
   const data = await res.json();
@@ -268,7 +321,7 @@ export async function listDroids(): Promise<Droid[]> {
   if (isElectron) {
     return window.oroio.listDroids();
   }
-  const res = await fetch('/api/droids/list', { method: 'POST' });
+  const res = await fetch('/api/droids/list', { method: 'POST', headers: getAuthHeaders() });
   return res.json();
 }
 
@@ -278,7 +331,7 @@ export async function createDroid(name: string): Promise<void> {
   }
   const res = await fetch('/api/droids/create', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
     body: JSON.stringify({ name }),
   });
   const data = await res.json();
@@ -291,7 +344,7 @@ export async function deleteDroid(name: string): Promise<void> {
   }
   const res = await fetch('/api/droids/delete', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
     body: JSON.stringify({ name }),
   });
   const data = await res.json();
@@ -303,7 +356,7 @@ export async function listMcpServers(): Promise<McpServer[]> {
   if (isElectron) {
     return window.oroio.listMcpServers();
   }
-  const res = await fetch('/api/mcp/list', { method: 'POST' });
+  const res = await fetch('/api/mcp/list', { method: 'POST', headers: getAuthHeaders() });
   return res.json();
 }
 
@@ -313,7 +366,7 @@ export async function addMcpServer(name: string, command: string, args: string[]
   }
   const res = await fetch('/api/mcp/add', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
     body: JSON.stringify({ name, command, args }),
   });
   const data = await res.json();
@@ -326,7 +379,7 @@ export async function removeMcpServer(name: string): Promise<void> {
   }
   const res = await fetch('/api/mcp/remove', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
     body: JSON.stringify({ name }),
   });
   const data = await res.json();
@@ -339,7 +392,7 @@ export async function updateMcpServer(name: string, config: Omit<McpServer, 'nam
   }
   const res = await fetch('/api/mcp/update', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
     body: JSON.stringify({ name, config }),
   });
   const data = await res.json();

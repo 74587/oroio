@@ -1114,13 +1114,37 @@ cmd_serve() {
         fi
       fi
 
+      # Prompt for 4-digit PIN
+      local pin="" pin_hash=""
+      if [ -t 0 ]; then
+        printf '\033[33m提示: 服务绑定 0.0.0.0，局域网内可访问，建议设置密码。\033[0m\n' >&2
+        while true; do
+          printf '请输入4位数字密码 (直接回车跳过): ' >&2
+          read -rs pin
+          echo >&2
+          if [ -z "$pin" ]; then
+            break
+          fi
+          if [[ "$pin" =~ ^[0-9]{4}$ ]]; then
+            pin_hash=$(printf '%s' "$pin" | shasum -a 256 | awk '{print $1}')
+            break
+          else
+            echo "密码必须是4位数字，请重试" >&2
+          fi
+        done
+      fi
+
       local script_dir
       script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
       local serve_script="$script_dir/serve.py"
       local dk_script="$script_dir/dk"
       [ -f "$serve_script" ] || die "未找到 serve.py"
 
-      nohup python3 "$serve_script" "$port" "$web_dir" "$DKM_HOME" "$dk_script" >"$log_file" 2>&1 &
+      if [ -n "$pin_hash" ]; then
+        nohup python3 "$serve_script" "$port" "$web_dir" "$DKM_HOME" "$dk_script" "$pin_hash" >"$log_file" 2>&1 &
+      else
+        nohup python3 "$serve_script" "$port" "$web_dir" "$DKM_HOME" "$dk_script" >"$log_file" 2>&1 &
+      fi
       local pid=$!
       echo "$pid" >"$pid_file"
       sleep 0.3

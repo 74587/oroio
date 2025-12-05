@@ -848,8 +848,39 @@ function Cmd-Serve {
                 Write-ErrorExit "端口 $port 已被占用 (PID: $portProc)，可执行 [$killHint] 释放后重试，或设置 DKM_SERVE_PORT 更换端口"
             }
             
+            # Prompt for 4-digit PIN
+            $pinHash = ""
+            if ([Environment]::UserInteractive) {
+                Write-Host "提示: 服务绑定 0.0.0.0，局域网内可访问，建议设置密码。" -ForegroundColor Yellow
+                while ($true) {
+                    $pin = Read-Host "请输入4位数字密码 (直接回车跳过)" -AsSecureString
+                    $bstr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($pin)
+                    try {
+                        $plainPin = [Runtime.InteropServices.Marshal]::PtrToStringAuto($bstr)
+                    } finally {
+                        [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr)
+                    }
+                    if ([string]::IsNullOrEmpty($plainPin)) {
+                        break
+                    }
+                    if ($plainPin -match '^\d{4}$') {
+                        $sha256 = [System.Security.Cryptography.SHA256]::Create()
+                        $bytes = [System.Text.Encoding]::UTF8.GetBytes($plainPin)
+                        $hash = $sha256.ComputeHash($bytes)
+                        $pinHash = [BitConverter]::ToString($hash).Replace("-", "").ToLower()
+                        $sha256.Dispose()
+                        break
+                    } else {
+                        Write-Host "密码必须是4位数字，请重试" -ForegroundColor Yellow
+                    }
+                }
+            }
+            
             $python = Get-Python
             $args = @($serveScript, "$port", $webDir, $script:OROIO_DIR, $dkPath)
+            if ($pinHash) {
+                $args += $pinHash
+            }
             $p = Start-Process -FilePath $python -ArgumentList $args -PassThru -WindowStyle Hidden -RedirectStandardOutput $logFile -RedirectStandardError $errFile
             Start-Sleep -Milliseconds 300
             if (Get-Process -Id $p.Id -ErrorAction SilentlyContinue) {
