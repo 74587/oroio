@@ -129,8 +129,12 @@ dk uninstall
 
 Or manually:
 ```bash
-curl -fsSL https://raw.githubusercontent.com/notdp/oroio/main/uninstall.sh | bash    # macOS/Linux
-irm https://raw.githubusercontent.com/notdp/oroio/main/uninstall.ps1 | iex           # Windows
+# macOS/Linux
+curl -fsSL https://raw.githubusercontent.com/notdp/oroio/main/uninstall.sh | bash
+```
+```powershell
+# Windows
+irm https://raw.githubusercontent.com/notdp/oroio/main/uninstall.ps1 | iex
 ```
 
 ---

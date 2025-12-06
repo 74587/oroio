@@ -363,7 +363,9 @@ Droid instructions here.
   // dk CLI check
   ipcMain.handle('dk:check', async (): Promise<{ installed: boolean; installCmd: string; platform: string }> => {
     const platform = os.platform();
-    const cmd = platform === 'win32' ? 'where dk' : 'which dk';
+    const cmd = platform === 'win32'
+      ? 'powershell -NoProfile -Command "if (Get-Command dk -ErrorAction SilentlyContinue) { exit 0 } else { exit 1 }"'
+      : 'which dk';
     const installed = await new Promise<boolean>((resolve) => {
       exec(cmd, (error) => resolve(!error));
     });
