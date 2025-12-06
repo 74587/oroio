@@ -18,8 +18,8 @@ const tabs: { id: Tab; label: string; icon: typeof Key }[] = [
   { id: 'keys', label: 'KEYS', icon: Key },
   { id: 'commands', label: 'COMMANDS', icon: Terminal },
   { id: 'skills', label: 'SKILLS', icon: Sparkles },
-  { id: 'droids', label: 'SUB_AGENTS', icon: Bot },
-  { id: 'mcp', label: 'MCP_SERVERS', icon: Plug },
+  { id: 'droids', label: 'DROIDS', icon: Bot },
+  { id: 'mcp', label: 'MCP', icon: Plug },
 ];
 
 export default function App() {
@@ -138,10 +138,16 @@ export default function App() {
                 <Terminal className="w-5 h-5" />
                 <span className="font-pixel text-base tracking-tighter mt-0.5 text-primary leading-none">OROIO</span>
               </h1>
+
+            </div>
+
+            <div className="flex items-center gap-3 text-xs">
               <button
                 className={cn(
-                  "flex items-center gap-2 text-xs px-2.5 py-1 border border-border bg-card",
-                  dkMissing && "cursor-pointer hover:bg-muted transition-colors border-amber-500/30"
+                  "flex items-center gap-2 h-7 px-3 border border-border bg-card transition-colors",
+                  dkMissing
+                    ? "cursor-pointer hover:bg-muted text-amber-500 bg-amber-500/5 border-amber-500/30"
+                    : "cursor-default text-muted-foreground"
                 )}
                 onClick={async () => {
                   if (dkMissing && isElectron) {
@@ -157,58 +163,46 @@ export default function App() {
                   "w-1.5 h-1.5 rounded-full",
                   dkMissing ? "bg-amber-500 animate-pulse" : "bg-emerald-500"
                 )} />
-                <span className={cn(
-                  "text-[10px] tracking-wider",
-                  dkMissing ? "text-amber-500" : "text-muted-foreground"
-                )}>
+                <span className="text-[10px] tracking-wider">
                   {dkMissing ? "DK_MISSING" : "CONNECTED"}
                 </span>
               </button>
-            </div>
 
-            <div className="flex items-center gap-2 text-xs">
-              <div className="flex items-center border border-border select-none bg-card">
+              <div className="flex h-7 items-center border border-border bg-card divide-x divide-border">
                 <button
                   onClick={() => { sound.toggleSound(); setTheme('light'); }}
                   className={cn(
-                    "px-2.5 py-1.5 transition-all text-[10px] tracking-wider font-medium",
+                    "h-full px-3 transition-all text-[10px] tracking-wider font-medium flex items-center hover:bg-muted hover:text-foreground",
                     theme === 'light'
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                      ? "bg-muted text-foreground font-semibold"
+                      : "text-muted-foreground"
                   )}
                 >
                   LIGHT
                 </button>
+
                 <button
                   onClick={() => { sound.toggleSound(); setTheme('dark'); }}
                   className={cn(
-                    "px-2.5 py-1.5 transition-all text-[10px] tracking-wider font-medium",
+                    "h-full px-3 transition-all text-[10px] tracking-wider font-medium flex items-center hover:bg-muted hover:text-foreground",
                     theme === 'dark'
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                      ? "bg-muted text-foreground font-semibold"
+                      : "text-muted-foreground"
                   )}
                 >
                   DARK
                 </button>
+
+
+
+                <button
+                  onClick={() => sound.toggle()}
+                  className="flex items-center justify-center w-9 h-full hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                  title={sound.muted ? "Unmute sounds" : "Mute sounds"}
+                >
+                  {sound.muted ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
+                </button>
               </div>
-
-              <a
-                href="https://github.com/notdp/oroio"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center justify-center w-8 h-8 border border-border bg-card hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-                title="View Source on GitHub"
-              >
-                <Github className="w-3.5 h-3.5" />
-              </a>
-
-              <button
-                onClick={() => sound.toggle()}
-                className="flex items-center justify-center w-8 h-8 border border-border bg-card hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-                title={sound.muted ? "Unmute sounds" : "Mute sounds"}
-              >
-                {sound.muted ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
-              </button>
             </div>
           </div>
         </header>
@@ -253,8 +247,19 @@ export default function App() {
 
         {/* Footer */}
         <footer className="text-[10px] text-muted-foreground/50 pt-3 flex justify-between items-center tracking-wider">
-          <span>PID:{fakePid}</span>
-          <span>MEM:{fakeMemory}MB</span>
+          <div className="flex items-center gap-4">
+            <span>PID:{fakePid}</span>
+            <span>MEM:{fakeMemory}MB</span>
+          </div>
+          <a
+            href="https://github.com/notdp/oroio"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 hover:text-muted-foreground transition-colors"
+          >
+            <Github className="w-3 h-3" />
+            <span>SOURCE</span>
+          </a>
         </footer>
       </div>
     </div>
