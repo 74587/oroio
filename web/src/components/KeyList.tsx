@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
-import { Trash2, Plus, RefreshCw, Terminal, CheckCircle2, Copy, Circle, X, AlertTriangle } from 'lucide-react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { Trash2, Plus, RefreshCw, Terminal, CheckCircle2, Copy, Circle, X, AlertTriangle, Download, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import { sounds } from '@/lib/sound';
 import { decryptKeys, maskKey } from '@/utils/crypto';
@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -164,6 +164,7 @@ export default function KeyList() {
   const [deleteIndex, setDeleteIndex] = useState<number | null>(null);
   const [newKey, setNewKey] = useState('');
   const [adding, setAdding] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const loadData = useCallback(async (showRefreshing = false, autoRefresh = true, silent = false) => {
     try {
@@ -233,15 +234,50 @@ export default function KeyList() {
   const handleAddKey = async () => {
     if (!newKey.trim()) return;
     setAdding(true);
-    const result = await addKey(newKey.trim());
-    if (result.success) {
+    const lines = newKey.split('\n').map(l => l.trim()).filter(Boolean);
+    let successCount = 0;
+    let lastError = '';
+    for (const key of lines) {
+      const result = await addKey(key);
+      if (result.success) {
+        successCount++;
+      } else {
+        lastError = result.error || 'Failed to add key';
+      }
+    }
+    if (successCount > 0) {
       setNewKey('');
       setAddDialogOpen(false);
       await loadData(true);
-    } else {
-      alert(result.error || 'Failed to add key');
+    }
+    if (lastError && successCount < lines.length) {
+      alert(`Added ${successCount}/${lines.length} keys. Error: ${lastError}`);
     }
     setAdding(false);
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const text = event.target?.result as string;
+      setNewKey(text);
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
+  const handleExport = () => {
+    if (keys.length === 0) return;
+    const text = keys.map(k => k.key).join('\n');
+    const blob = new Blob([text], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'factory-keys.txt';
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   const handleRemoveKey = (index: number) => {
@@ -319,6 +355,9 @@ export default function KeyList() {
           <Button variant="outline" size="icon" onClick={handleRefresh} disabled={refreshing} className="h-8 w-8" title="Refresh">
             <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? 'animate-spin' : ''}`} />
           </Button>
+          <Button variant="outline" size="icon" onClick={handleExport} disabled={keys.length === 0} className="h-8 w-8" title="Export All Keys">
+            <Download className="h-3.5 w-3.5" />
+          </Button>
           <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
             <DialogTrigger asChild>
               <Button size="sm" className="h-8 text-xs px-3">
@@ -328,19 +367,31 @@ export default function KeyList() {
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Inject New Key</DialogTitle>
-                <DialogDescription>Enter your Factory API key below.</DialogDescription>
+                <DialogTitle>Inject Keys</DialogTitle>
+                <DialogDescription>Enter your Factory API keys below (one per line).</DialogDescription>
               </DialogHeader>
-              <Input
-                placeholder="fk-..."
+              <Textarea
+                placeholder={"fk-xxx\nfk-yyy\nfk-zzz"}
                 value={newKey}
                 onChange={(e) => setNewKey(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleAddKey()}
+                rows={5}
+                className="font-mono text-sm"
               />
-              <DialogFooter>
+              <input
+                type="file"
+                accept=".txt"
+                ref={fileInputRef}
+                onChange={handleFileSelect}
+                className="hidden"
+              />
+              <DialogFooter className="flex-col sm:flex-row gap-2">
+                <Button variant="outline" onClick={() => fileInputRef.current?.click()} className="sm:mr-auto">
+                  <Upload className="h-3.5 w-3.5 mr-1.5" />
+                  IMPORT FROM FILE
+                </Button>
                 <Button variant="outline" onClick={() => setAddDialogOpen(false)}>CANCEL</Button>
                 <Button onClick={handleAddKey} disabled={adding || !newKey.trim()}>
-                  {adding ? 'INJECTING...' : 'INJECT KEY'}
+                  {adding ? 'INJECTING...' : 'INJECT KEYS'}
                 </Button>
               </DialogFooter>
             </DialogContent>
