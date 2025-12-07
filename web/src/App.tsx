@@ -143,7 +143,7 @@ export default function App() {
               <div className="flex h-7 items-center border border-border bg-card divide-x divide-border">
                 <button
                   onClick={() => { sound.toggleSound(); setTheme(theme === 'light' ? 'dark' : 'light'); }}
-                  className="flex items-center justify-center w-9 h-full hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                  className="flex items-center justify-center w-9 h-full hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
                   title={theme === 'light' ? "Switch to dark mode" : "Switch to light mode"}
                 >
                   {theme === 'light' ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
@@ -151,7 +151,7 @@ export default function App() {
 
                 <button
                   onClick={() => { if (sound.muted) { sound.toggle(); sound.toggleSound(); } else { sound.toggleSound(); sound.toggle(); } }}
-                  className="flex items-center justify-center w-9 h-full hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                  className="flex items-center justify-center w-9 h-full hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
                   title={sound.muted ? "Unmute sounds" : "Mute sounds"}
                 >
                   {sound.muted ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
@@ -171,7 +171,7 @@ export default function App() {
                   key={id}
                   onClick={() => { sound.click(); setActiveTab(id); }}
                   className={cn(
-                    "relative px-3 py-1.5 transition-all duration-150 outline-none flex items-center gap-2 text-xs tracking-wide",
+                    "relative px-3 py-1.5 transition-all duration-150 outline-none flex items-center gap-2 text-xs tracking-wide cursor-pointer",
                     isActive
                       ? "text-primary-foreground bg-primary"
                       : "text-muted-foreground hover:text-foreground hover:bg-muted"
