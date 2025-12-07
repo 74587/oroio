@@ -32,7 +32,6 @@ export default function App() {
     }
     return 'light';
   });
-  const [fakePid] = useState(() => Math.floor(Math.random() * 9000) + 1000);
 
   // Auth state
   const [authChecking, setAuthChecking] = useState(true);
@@ -141,32 +140,6 @@ export default function App() {
             </div>
 
             <div className="flex items-center gap-3 text-xs">
-              <button
-                className={cn(
-                  "flex items-center gap-2 h-7 px-3 border border-border bg-card transition-colors",
-                  dkMissing
-                    ? "cursor-pointer hover:bg-muted text-amber-500 bg-amber-500/5 border-amber-500/30"
-                    : "cursor-default text-muted-foreground"
-                )}
-                onClick={async () => {
-                  if (dkMissing && isElectron) {
-                    const result = await checkDk();
-                    if (result && !result.installed) {
-                      showDkMissingToast(result.installCmd);
-                    }
-                  }
-                }}
-                disabled={!dkMissing}
-              >
-                <span className={cn(
-                  "w-1.5 h-1.5 rounded-full",
-                  dkMissing ? "bg-amber-500 animate-pulse" : "bg-emerald-500"
-                )} />
-                <span className="text-[10px] tracking-wider">
-                  {dkMissing ? "DK_MISSING" : "CONNECTED"}
-                </span>
-              </button>
-
               <div className="flex h-7 items-center border border-border bg-card divide-x divide-border">
                 <button
                   onClick={() => { sound.toggleSound(); setTheme(theme === 'light' ? 'dark' : 'light'); }}
@@ -227,10 +200,25 @@ export default function App() {
             {activeTab === 'mcp' && <McpManager />}
           </main>
           <footer className="bg-primary text-primary-foreground px-3 py-1 flex justify-between items-center text-[10px] border border-t-0 border-border">
-            <div className="flex items-center gap-4">
-              <span>● READY</span>
-              <span>PID {fakePid}</span>
-            </div>
+            <span
+              className={cn(
+                "inline-flex items-center gap-1.5",
+                dkMissing && "cursor-pointer hover:opacity-80"
+              )}
+              onClick={async () => {
+                if (dkMissing && isElectron) {
+                  const result = await checkDk();
+                  if (result && !result.installed) {
+                    showDkMissingToast(result.installCmd);
+                  }
+                }
+              }}
+            >
+              <svg width="6" height="6" viewBox="0 0 6 6" className="shrink-0">
+                <circle cx="3" cy="3" r="3" className={cn(dkMissing ? "fill-amber-400 animate-pulse" : "fill-emerald-400")} />
+              </svg>
+              {dkMissing ? "DK_MISSING" : "READY"}
+            </span>
             <a href="https://github.com/notdp/oroio" target="_blank" rel="noopener noreferrer" className="hover:opacity-80">
               <Github className="w-3 h-3" />
             </a>
