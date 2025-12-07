@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Key, Sparkles, Terminal, Bot, Plug, Github, Volume2, VolumeX } from 'lucide-react';
+import { Key, Sparkles, Terminal, Bot, Plug, Github, Volume2, VolumeX, Sun, Moon } from 'lucide-react';
 import { useSound } from '@/hooks/useSound';
 import { Toaster } from 'sonner';
 import KeyList, { showDkMissingToast } from '@/components/KeyList';
@@ -33,7 +33,6 @@ export default function App() {
     return 'light';
   });
   const [fakePid] = useState(() => Math.floor(Math.random() * 9000) + 1000);
-  const [fakeMemory] = useState(() => Math.floor(Math.random() * 50) + 20);
 
   // Auth state
   const [authChecking, setAuthChecking] = useState(true);
@@ -136,7 +135,7 @@ export default function App() {
             <div className="flex items-center gap-4">
               <h1 className="text-xl font-bold tracking-tight text-primary flex items-center gap-2">
                 <Terminal className="w-5 h-5" />
-                <span className="font-pixel text-base tracking-tighter mt-0.5 text-primary leading-none">OROIO</span>
+                <span className="font-pixel text-lg tracking-tighter mt-0.5 text-primary leading-none">OROIO</span>
               </h1>
 
             </div>
@@ -170,33 +169,15 @@ export default function App() {
 
               <div className="flex h-7 items-center border border-border bg-card divide-x divide-border">
                 <button
-                  onClick={() => { sound.toggleSound(); setTheme('light'); }}
-                  className={cn(
-                    "h-full px-3 transition-all text-[10px] tracking-wider font-medium flex items-center hover:bg-muted hover:text-foreground",
-                    theme === 'light'
-                      ? "bg-muted text-foreground font-semibold"
-                      : "text-muted-foreground"
-                  )}
+                  onClick={() => { sound.toggleSound(); setTheme(theme === 'light' ? 'dark' : 'light'); }}
+                  className="flex items-center justify-center w-9 h-full hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                  title={theme === 'light' ? "Switch to dark mode" : "Switch to light mode"}
                 >
-                  LIGHT
+                  {theme === 'light' ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
                 </button>
 
                 <button
-                  onClick={() => { sound.toggleSound(); setTheme('dark'); }}
-                  className={cn(
-                    "h-full px-3 transition-all text-[10px] tracking-wider font-medium flex items-center hover:bg-muted hover:text-foreground",
-                    theme === 'dark'
-                      ? "bg-muted text-foreground font-semibold"
-                      : "text-muted-foreground"
-                  )}
-                >
-                  DARK
-                </button>
-
-
-
-                <button
-                  onClick={() => sound.toggle()}
+                  onClick={() => { if (sound.muted) { sound.toggle(); sound.toggleSound(); } else { sound.toggleSound(); sound.toggle(); } }}
                   className="flex items-center justify-center w-9 h-full hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
                   title={sound.muted ? "Unmute sounds" : "Mute sounds"}
                 >
@@ -236,31 +217,25 @@ export default function App() {
           </div>
         </nav>
 
-        {/* Main Content Area */}
-        <main className="border border-border bg-card p-6 min-h-[500px] relative">
-          {activeTab === 'keys' && <KeyList />}
-          {activeTab === 'commands' && <CommandsManager />}
-          {activeTab === 'skills' && <SkillsManager />}
-          {activeTab === 'droids' && <DroidsManager />}
-          {activeTab === 'mcp' && <McpManager />}
-        </main>
-
-        {/* Footer */}
-        <footer className="text-[10px] text-muted-foreground/50 pt-3 flex justify-between items-center tracking-wider">
-          <div className="flex items-center gap-4">
-            <span>PID:{fakePid}</span>
-            <span>MEM:{fakeMemory}MB</span>
-          </div>
-          <a
-            href="https://github.com/notdp/oroio"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1.5 hover:text-muted-foreground transition-colors"
-          >
-            <Github className="w-3 h-3" />
-            <span>SOURCE</span>
-          </a>
-        </footer>
+        {/* Main Content Area + Footer */}
+        <div>
+          <main className="border border-border border-b-0 bg-card p-6 min-h-[500px] relative">
+            {activeTab === 'keys' && <KeyList />}
+            {activeTab === 'commands' && <CommandsManager />}
+            {activeTab === 'skills' && <SkillsManager />}
+            {activeTab === 'droids' && <DroidsManager />}
+            {activeTab === 'mcp' && <McpManager />}
+          </main>
+          <footer className="bg-primary text-primary-foreground px-3 py-1 flex justify-between items-center text-[10px] border border-t-0 border-border">
+            <div className="flex items-center gap-4">
+              <span>● READY</span>
+              <span>PID {fakePid}</span>
+            </div>
+            <a href="https://github.com/notdp/oroio" target="_blank" rel="noopener noreferrer" className="hover:opacity-80">
+              <Github className="w-3 h-3" />
+            </a>
+          </footer>
+        </div>
       </div>
     </div>
   );

@@ -43,7 +43,7 @@ function UsageCell({ usage }: { usage: KeyUsage | null }) {
 
   return (
     <div className="flex flex-col gap-1 min-w-[140px]">
-      <div className="flex items-center justify-between text-[10px] text-muted-foreground tracking-wider">
+      <div className="flex items-center justify-between text-xs text-muted-foreground tracking-wider">
         <span>{formatNumber(used)} / {formatNumber(total)}</span>
       </div>
       <Progress
@@ -72,7 +72,7 @@ function KeyDisplay({ keyText, isCurrent, className }: { keyText: string, isCurr
       onClick={handleCopy}
       title="Click to copy key"
     >
-      <code className={cn("text-xs relative font-mono transition-colors", isCurrent && "font-medium text-cyan-600 dark:text-cyan-400")}>
+      <code className={cn("text-sm relative font-mono transition-colors", isCurrent && "font-medium text-cyan-600 dark:text-cyan-400")}>
         {maskKey(keyText)}
       </code>
       <div className="w-4 h-4 flex items-center justify-center">
@@ -353,12 +353,12 @@ export default function KeyList() {
           <TableHeader>
             <TableRow className="bg-muted/30 hover:bg-muted/30">
               <TableHead className="w-10"></TableHead>
-              <TableHead className="w-12 text-[10px] tracking-wider">NO</TableHead>
-              <TableHead className="text-[10px] tracking-wider">KEY</TableHead>
-              <TableHead className="text-[10px] tracking-wider">USAGE</TableHead>
-              <TableHead className="w-20 text-right text-[10px] tracking-wider">USED%</TableHead>
-              <TableHead className="pl-6 text-[10px] tracking-wider">EXPIRY</TableHead>
-              <TableHead className="w-[90px] text-right text-[10px] tracking-wider">ACTIONS</TableHead>
+              <TableHead className="w-12 text-xs tracking-wider">NO</TableHead>
+              <TableHead className="text-xs tracking-wider">KEY</TableHead>
+              <TableHead className="text-xs tracking-wider">USAGE</TableHead>
+              <TableHead className="w-20 text-right text-xs tracking-wider">USED</TableHead>
+              <TableHead className="pl-6 text-xs tracking-wider">EXPIRY</TableHead>
+              <TableHead className="w-[90px] text-right text-xs tracking-wider">ACTIONS</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -392,7 +392,7 @@ export default function KeyList() {
                       )}
                     </div>
                   </TableCell>
-                  <TableCell className="font-medium text-xs py-2">
+                  <TableCell className="font-medium text-sm py-2">
                     {info.index}
                   </TableCell>
                   <TableCell className="py-2">
@@ -404,14 +404,14 @@ export default function KeyList() {
                   <TableCell className="py-2">
                     <UsageCell usage={info.usage} />
                   </TableCell>
-                  <TableCell className="text-right font-mono text-xs text-muted-foreground py-2">
+                  <TableCell className="text-right font-mono text-sm text-muted-foreground py-2">
                     {info.usage?.total ? `${percent}%` : '-'}
                   </TableCell>
                   <TableCell className="pl-6 py-2">
                     {isInvalid ? (
-                      <Badge variant="destructive" className="text-[10px]">INVALID</Badge>
+                      <Badge variant="destructive" className="text-xs">INVALID</Badge>
                     ) : (
-                      <span className="text-xs text-muted-foreground">{info.usage?.expires || '-'}</span>
+                      <span className="text-sm text-muted-foreground">{info.usage?.expires || '-'}</span>
                     )}
                   </TableCell>
                   <TableCell className="py-2">
