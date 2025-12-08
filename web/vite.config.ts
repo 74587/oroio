@@ -8,6 +8,7 @@ import { homedir } from 'os'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const FACTORY_DIR = path.join(homedir(), '.factory')
+const OROIO_DIR = path.join(homedir(), '.oroio')
 
 function oroioDataPlugin() {
   return {
@@ -235,6 +236,55 @@ Command instructions here.
               fs.mkdirSync(FACTORY_DIR, { recursive: true })
               fs.writeFileSync(mcpFile, JSON.stringify(config, null, 2))
               return sendJson({ success: true })
+            }
+            
+            // DK config
+            if (req.url === '/api/dk/config') {
+              const configFile = path.join(OROIO_DIR, 'config')
+              
+              // Parse key=value format
+              const parseConfig = (content: string): Record<string, string> => {
+                const config: Record<string, string> = {}
+                for (const line of content.split('\n')) {
+                  const idx = line.indexOf('=')
+                  if (idx > 0) {
+                    config[line.slice(0, idx)] = line.slice(idx + 1)
+                  }
+                }
+                return config
+              }
+              
+              // Serialize to key=value format
+              const serializeConfig = (config: Record<string, string>): string => {
+                return Object.entries(config).map(([k, v]) => `${k}=${v}`).join('\n')
+              }
+              
+              // If data is provided, it's a SET operation
+              if (Object.keys(data).length > 0) {
+                try {
+                  let existing: Record<string, string> = {}
+                  try {
+                    existing = parseConfig(fs.readFileSync(configFile, 'utf-8'))
+                  } catch {}
+                  const updated = { ...existing, ...data }
+                  fs.mkdirSync(OROIO_DIR, { recursive: true })
+                  fs.writeFileSync(configFile, serializeConfig(updated))
+                  return sendJson({ success: true, config: updated })
+                } catch (e: any) {
+                  return sendJson({ success: false, error: e.message })
+                }
+              } else {
+                // GET operation
+                try {
+                  let config: Record<string, string> = {}
+                  try {
+                    config = parseConfig(fs.readFileSync(configFile, 'utf-8'))
+                  } catch {}
+                  return sendJson(config)
+                } catch (e: any) {
+                  return sendJson({ error: e.message })
+                }
+              }
             }
             
             next()

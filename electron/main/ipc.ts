@@ -44,6 +44,11 @@ interface McpServer {
   env?: Record<string, string>;
 }
 
+interface DkConfig {
+  ascii?: string;
+  [key: string]: string | undefined;
+}
+
 export function registerIpcHandlers(): void {
   // Get all keys
   ipcMain.handle('keys:list', async (): Promise<KeyInfo[]> => {
@@ -373,6 +378,57 @@ Droid instructions here.
       ? 'irm https://raw.githubusercontent.com/notdp/oroio/main/install.ps1 | iex'
       : 'curl -fsSL https://raw.githubusercontent.com/notdp/oroio/main/install.sh | bash';
     return { installed, installCmd, platform };
+  });
+
+  // dk config handlers (key=value format, same as dk CLI)
+  ipcMain.handle('dk:getConfig', async (): Promise<DkConfig> => {
+    const configPath = path.join(OROIO_DIR, 'config');
+    try {
+      const content = await fs.readFile(configPath, 'utf-8');
+      const config: DkConfig = {};
+      for (const line of content.split('\n')) {
+        const idx = line.indexOf('=');
+        if (idx > 0) {
+          config[line.slice(0, idx)] = line.slice(idx + 1);
+        }
+      }
+      return config;
+    } catch {
+      return {};
+    }
+  });
+
+  ipcMain.handle('dk:setConfig', async (_event, config: Partial<DkConfig>): Promise<void> => {
+    const configPath = path.join(OROIO_DIR, 'config');
+    let existing: DkConfig = {};
+    try {
+      const content = await fs.readFile(configPath, 'utf-8');
+      for (const line of content.split('\n')) {
+        const idx = line.indexOf('=');
+        if (idx > 0) {
+          existing[line.slice(0, idx)] = line.slice(idx + 1);
+        }
+      }
+    } catch {
+      // File doesn't exist
+    }
+    const updated = { ...existing, ...config };
+    await fs.mkdir(OROIO_DIR, { recursive: true });
+    const lines = Object.entries(updated)
+      .filter(([, v]) => v !== undefined)
+      .map(([k, v]) => `${k}=${v}`);
+    await fs.writeFile(configPath, lines.join('\n'));
+  });
+
+  ipcMain.handle('dk:selectPath', async (_event, type: 'file' | 'directory'): Promise<string | null> => {
+    const { dialog } = await import('electron');
+    const result = await dialog.showOpenDialog({
+      properties: type === 'directory' ? ['openDirectory', 'createDirectory'] : ['openFile'],
+    });
+    if (result.canceled || result.filePaths.length === 0) {
+      return null;
+    }
+    return result.filePaths[0];
   });
 }
 

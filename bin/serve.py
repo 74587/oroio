@@ -339,6 +339,9 @@ class OroioHandler(http.server.SimpleHTTPRequestHandler):
             self.handle_remove_mcp(data)
         elif path == '/api/mcp/update':
             self.handle_update_mcp(data)
+        # DK config
+        elif path == '/api/dk/config':
+            self.handle_dk_config(data)
         else:
             self.send_error(404, 'Not Found')
     
@@ -739,6 +742,50 @@ class OroioHandler(http.server.SimpleHTTPRequestHandler):
             self.send_json({'success': True})
         except Exception as e:
             self.send_json({'success': False, 'error': str(e)})
+    
+    def handle_dk_config(self, data):
+        """Get or set dk config (key=value format, same as dk CLI)"""
+        config_file = os.path.join(self.oroio_dir, 'config')
+        
+        def parse_config(content):
+            config = {}
+            for line in content.split('\n'):
+                if '=' in line:
+                    key, val = line.split('=', 1)
+                    config[key] = val
+            return config
+        
+        def serialize_config(config):
+            return '\n'.join(f'{k}={v}' for k, v in config.items())
+        
+        # If data is provided, it's a SET operation
+        if data:
+            try:
+                existing = {}
+                try:
+                    with open(config_file, 'r') as f:
+                        existing = parse_config(f.read())
+                except:
+                    pass
+                existing.update(data)
+                os.makedirs(self.oroio_dir, exist_ok=True)
+                with open(config_file, 'w') as f:
+                    f.write(serialize_config(existing))
+                self.send_json({'success': True, 'config': existing})
+            except Exception as e:
+                self.send_json({'success': False, 'error': str(e)})
+        else:
+            # GET operation
+            try:
+                config = {}
+                try:
+                    with open(config_file, 'r') as f:
+                        config = parse_config(f.read())
+                except:
+                    pass
+                self.send_json(config)
+            except Exception as e:
+                self.send_json({'error': str(e)})
     
     def log_message(self, format, *args):
         pass

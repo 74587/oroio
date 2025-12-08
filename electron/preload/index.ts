@@ -32,6 +32,11 @@ export interface DkCheckResult {
   platform: string;
 }
 
+export interface DkConfig {
+  ascii?: string;
+  [key: string]: string | undefined;
+}
+
 export interface OroioAPI {
   keys: {
     list: () => Promise<any[]>;
@@ -47,6 +52,9 @@ export interface OroioAPI {
   on: (channel: string, callback: (...args: any[]) => void) => () => void;
   // dk CLI check
   checkDk: () => Promise<DkCheckResult>;
+  getDkConfig: () => Promise<DkConfig>;
+  setDkConfig: (config: Partial<DkConfig>) => Promise<void>;
+  selectPath: (type: 'file' | 'directory') => Promise<string | null>;
   // Skills
   listSkills: () => Promise<Skill[]>;
   createSkill: (name: string) => Promise<void>;
@@ -96,6 +104,9 @@ const api: OroioAPI = {
   },
   // dk CLI check
   checkDk: () => ipcRenderer.invoke('dk:check'),
+  getDkConfig: () => ipcRenderer.invoke('dk:getConfig'),
+  setDkConfig: (config: Partial<DkConfig>) => ipcRenderer.invoke('dk:setConfig', config),
+  selectPath: (type: 'file' | 'directory') => ipcRenderer.invoke('dk:selectPath', type),
   // Skills
   listSkills: () => ipcRenderer.invoke('skills:list'),
   createSkill: (name: string) => ipcRenderer.invoke('skills:create', name),

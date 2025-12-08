@@ -48,6 +48,11 @@ export interface DkCheckResult {
   platform: string;
 }
 
+export interface DkConfig {
+  ascii?: string;
+  [key: string]: string | undefined;
+}
+
 export async function checkAuth(): Promise<AuthCheckResult> {
   if (isElectron) {
     return { required: false, authenticated: true };
@@ -413,6 +418,44 @@ export async function checkDk(): Promise<DkCheckResult | null> {
   return window.oroio.checkDk();
 }
 
+// dk config
+export async function getDkConfig(): Promise<DkConfig | null> {
+  if (isElectron) {
+    return window.oroio.getDkConfig();
+  }
+  // Use HTTP API
+  try {
+    const res = await fetch('/api/dk/config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+    });
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
+export async function setDkConfig(config: Partial<DkConfig>): Promise<void> {
+  if (isElectron) {
+    return window.oroio.setDkConfig(config);
+  }
+  // Use HTTP API
+  await fetch('/api/dk/config', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+    body: JSON.stringify(config),
+  });
+}
+
+export async function selectPath(type: 'file' | 'directory'): Promise<string | null> {
+  if (isElectron) {
+    return window.oroio.selectPath(type);
+  }
+  // In web mode, prompt user to enter path manually
+  const label = type === 'directory' ? 'folder' : 'file';
+  return prompt(`Enter ${label} path:`);
+}
+
 // Type declaration for Electron window
 declare global {
   interface Window {
@@ -431,6 +474,9 @@ declare global {
       on: (channel: string, callback: (...args: unknown[]) => void) => () => void;
       // dk CLI check
       checkDk: () => Promise<DkCheckResult>;
+      getDkConfig: () => Promise<DkConfig>;
+      setDkConfig: (config: Partial<DkConfig>) => Promise<void>;
+      selectPath: (type: 'file' | 'directory') => Promise<string | null>;
       // Skills
       listSkills: () => Promise<Skill[]>;
       createSkill: (name: string) => Promise<void>;
