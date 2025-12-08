@@ -2,7 +2,7 @@ import { ipcMain, BrowserWindow, shell } from 'electron';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import * as os from 'os';
-import { exec } from 'child_process';
+
 import {
   getKeyList,
   getCurrentKey,
@@ -365,15 +365,19 @@ Droid instructions here.
     await shell.openPath(filePath);
   });
 
-  // dk CLI check
+  // dk CLI check - check file directly for faster detection
   ipcMain.handle('dk:check', async (): Promise<{ installed: boolean; installCmd: string; platform: string }> => {
     const platform = os.platform();
-    const cmd = platform === 'win32'
-      ? 'powershell -NoProfile -Command "if (Get-Command dk -ErrorAction SilentlyContinue) { exit 0 } else { exit 1 }"'
-      : 'which dk';
-    const installed = await new Promise<boolean>((resolve) => {
-      exec(cmd, (error) => resolve(!error));
-    });
+    const dkPath = platform === 'win32'
+      ? path.join(process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local'), 'oroio', 'bin', 'dk.ps1')
+      : path.join(os.homedir(), '.local', 'bin', 'dk');
+    let installed = false;
+    try {
+      await fs.access(dkPath);
+      installed = true;
+    } catch {
+      // file not found
+    }
     const installCmd = platform === 'win32'
       ? 'irm https://raw.githubusercontent.com/notdp/oroio/main/install.ps1 | iex'
       : 'curl -fsSL https://raw.githubusercontent.com/notdp/oroio/main/install.sh | bash';
