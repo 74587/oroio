@@ -64,6 +64,7 @@ droid
 | `dk rm <序号...>`      | 按序号删除密钥                   |
 | `dk run <命令>`        | 使用当前密钥运行命令（自动轮换） |
 | `dk serve`             | 启动 Web 控制台（端口 7758）     |
+| `dk config`            | 配置 CLI 选项（边框样式等）      |
 | `dk reinstall`         | 更新到最新版本                   |
 | `dk uninstall`         | 卸载 dk                          |
 

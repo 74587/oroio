@@ -64,6 +64,7 @@ Here's what `dk list` looks like:
 | `dk rm <n...>`         | Remove keys by index                        |
 | `dk run <cmd>`         | Run command with current key (auto-rotates) |
 | `dk serve`             | Start web dashboard on port 7758            |
+| `dk config`            | Configure CLI options (border style, etc.)  |
 | `dk reinstall`         | Update to latest version                    |
 | `dk uninstall`         | Remove dk                                   |
 
