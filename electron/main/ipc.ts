@@ -421,7 +421,7 @@ Droid instructions here.
     const lines = Object.entries(updated)
       .filter(([, v]) => v !== undefined)
       .map(([k, v]) => `${k}=${v}`);
-    await fs.writeFile(configPath, lines.join('\n'));
+    await fs.writeFile(configPath, lines.join('\n') + '\n');
   });
 
   ipcMain.handle('dk:selectPath', async (_event, type: 'file' | 'directory'): Promise<string | null> => {

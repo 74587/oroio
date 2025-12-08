@@ -256,7 +256,7 @@ Command instructions here.
               
               // Serialize to key=value format
               const serializeConfig = (config: Record<string, string>): string => {
-                return Object.entries(config).map(([k, v]) => `${k}=${v}`).join('\n')
+                return Object.entries(config).map(([k, v]) => `${k}=${v}`).join('\n') + '\n'
               }
               
               // If data is provided, it's a SET operation
