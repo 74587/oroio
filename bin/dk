@@ -16,10 +16,6 @@ DKM_LIST_AUTO_MAX="${DKM_LIST_AUTO_MAX:-6}"        # 自动模式的最大并发
 DKM_LIST_JOBS="${DKM_LIST_JOBS:-0}"                # 0 表示自动 min(DKM_LIST_AUTO_MAX, key数)
 DKM_CACHE_TTL="${DKM_CACHE_TTL:-30}"                # list 结果缓存 TTL（秒，0 关闭）
 
-# 可调优的 curl 限制，避免长时间等待慢/无效请求
-DKM_CURL_MAX_TIME="${DKM_CURL_MAX_TIME:-4}"        # 单请求超时（秒）
-DKM_CURL_CONNECT_TIMEOUT="${DKM_CURL_CONNECT_TIMEOUT:-2}" # 连接超时（秒）
-
 usage() {
   cat <<'EOF'
 Usage: dk <command> [args]
@@ -92,6 +88,7 @@ declare -a FETCH_INFOS
 fetch_all_infos() {
   local n=${#KEYS[@]}
   FETCH_INFOS=()
+  if (( n == 0 )); then return; fi
   local jobs="$DKM_LIST_JOBS"
   if (( jobs <= 0 || jobs > n )); then
     local auto_max="$DKM_LIST_AUTO_MAX"
@@ -108,10 +105,16 @@ fetch_all_infos() {
     pids+=("$!")
     if (( ${#pids[@]} >= jobs )); then
       wait "${pids[0]}"
-      pids=(${pids[@]:1})
+      if (( ${#pids[@]} > 1 )); then
+        pids=("${pids[@]:1}")
+      else
+        pids=()
+      fi
     fi
   done
-  for pid in "${pids[@]}"; do wait "$pid"; done
+  if (( ${#pids[@]} > 0 )); then
+    for pid in "${pids[@]}"; do wait "$pid"; done
+  fi
   for idx in "${!KEYS[@]}"; do
     FETCH_INFOS[$idx]=$(cat "$tmpdir/$idx")
   done
@@ -170,8 +173,13 @@ load_keys() {
 }
 
 save_keys() {
-  printf "%s\n" "${KEYS[@]}" | openssl enc -aes-256-cbc -pbkdf2 -salt \
-    -out "$KEYS_ENC_FILE" -pass "pass:$DKM_SALT"
+  if (( ${#KEYS[@]} > 0 )); then
+    printf "%s\n" "${KEYS[@]}" | openssl enc -aes-256-cbc -pbkdf2 -salt \
+      -out "$KEYS_ENC_FILE" -pass "pass:$DKM_SALT"
+  else
+    rm -f "$KEYS_ENC_FILE"
+    touch "$KEYS_ENC_FILE"
+  fi
 }
 
 copy_to_clipboard() {
@@ -607,6 +615,19 @@ auto_rotate_if_needed() {
   die "所有key余额都为0或不可用，请添加新key。"
 }
 
+key_exists() {
+  local new_key="$1"
+  local line existing_key
+  if (( ${#KEYS[@]} == 0 )); then return 1; fi
+  for line in "${KEYS[@]}"; do
+    IFS=$'\t' read -r existing_key _ <<<"$line"
+    if [[ "$existing_key" == "$new_key" ]]; then
+      return 0
+    fi
+  done
+  return 1
+}
+
 cmd_add() {
   ensure_store
   local file_mode=0 file=""
@@ -619,23 +640,38 @@ cmd_add() {
   done
   ensure_store
   load_keys
+  local added=0 skipped=0
   if (( file_mode )); then
     [ -f "$file" ] || die "文件不存在: $file"
     while IFS= read -r line; do
       line=${line%%#*}
       line=$(echo "$line" | xargs)
       [ -z "$line" ] && continue
-      KEYS+=("${line}"$'\t')
+      if key_exists "$line"; then
+        skipped=$((skipped + 1))
+      else
+        KEYS+=("${line}"$'\t')
+        added=$((added + 1))
+      fi
     done <"$file"
   else
     [ $# -gt 0 ] || die "请提供至少一个key"
     for k in "$@"; do
-      KEYS+=("${k}"$'\t')
+      if key_exists "$k"; then
+        skipped=$((skipped + 1))
+      else
+        KEYS+=("${k}"$'\t')
+        added=$((added + 1))
+      fi
     done
   fi
   save_keys
   invalidate_cache
-  echo "已添加。当前共有 ${#KEYS[@]} 个key。"
+  local msg="已添加 ${added} 个key"
+  if (( skipped > 0 )); then
+    msg="${msg}，跳过 ${skipped} 个重复"
+  fi
+  echo "${msg}。当前共有 ${#KEYS[@]} 个key。"
 }
 
 cmd_list() {
@@ -1076,6 +1112,7 @@ cmd_rm() {
   ensure_store
   load_keys
   [ $# -ge 1 ] || die "用法: dk rm <序号...>"
+  [ ${#KEYS[@]} -gt 0 ] || die "暂无key可删除"
   local to_remove=("$@")
   local new=()
   local i=0
@@ -1087,7 +1124,11 @@ cmd_rm() {
     done
     (( skip )) || new+=("$line")
   done
-  KEYS=("${new[@]}")
+  if (( ${#new[@]} > 0 )); then
+    KEYS=("${new[@]}")
+  else
+    KEYS=()
+  fi
   save_keys
   echo "已删除，剩余 ${#KEYS[@]} 个key。"
   set_current 1
