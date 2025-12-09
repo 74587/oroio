@@ -475,10 +475,10 @@ export default function KeyList() {
           <colgroup>
             <col style={{ width: '4%' }} />
             <col style={{ width: '5%' }} />
+            <col style={{ width: '22%' }} />
+            <col style={{ width: '8%' }} />
             <col style={{ width: '18%' }} />
-            <col style={{ width: '12%' }} />
-            <col style={{ width: '22%' }} />
-            <col style={{ width: '22%' }} />
+            <col style={{ width: '18%' }} />
             <col style={{ width: '10%' }} />
           </colgroup>
           <TableHeader>
@@ -486,8 +486,8 @@ export default function KeyList() {
               <TableHead></TableHead>
               <TableHead className="text-xs tracking-wider">NO</TableHead>
               <TableHead className="text-xs tracking-wider">KEY</TableHead>
-              <SortableHeader field="percent" label="%" align="center" sortConfig={sortConfig} onSort={handleSort} />
-              <SortableHeader field="quota" label="QUOTA" align="center" sortConfig={sortConfig} onSort={handleSort} />
+              <SortableHeader field="percent" label="%" align="right" sortConfig={sortConfig} onSort={handleSort} />
+              <SortableHeader field="quota" label="QUOTA" align="right" sortConfig={sortConfig} onSort={handleSort} />
               <SortableHeader field="expiry" label="EXPIRY" align="center" sortConfig={sortConfig} onSort={handleSort} />
               <TableHead className="text-right text-xs tracking-wider">ACTIONS</TableHead>
             </TableRow>
@@ -537,10 +537,10 @@ export default function KeyList() {
                       isCurrent={info.isCurrent}
                     />
                   </TableCell>
-                  <TableCell className="text-center font-mono text-sm text-muted-foreground py-2">
+                  <TableCell className="text-right font-mono text-sm text-muted-foreground py-2">
                     {info.usage?.total ? `${percent}%` : '-'}
                   </TableCell>
-                  <TableCell className="py-2 text-sm text-muted-foreground font-mono text-center whitespace-nowrap">
+                  <TableCell className="py-2 text-sm text-muted-foreground font-mono text-right whitespace-nowrap">
                     {info.usage?.total ? (
                       <span>
                         {formatNumber(info.usage.used || 0)}
