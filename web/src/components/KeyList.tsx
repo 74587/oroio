@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Trash2, Plus, RefreshCw, Terminal, CheckCircle2, Copy, Circle, X, AlertTriangle, Download, Upload } from 'lucide-react';
+import { Trash2, Plus, RefreshCw, Terminal, CheckCircle2, Copy, Circle, X, AlertTriangle, Download, Upload, ArrowUp, ArrowDown, ChevronsUpDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { sounds } from '@/lib/sound';
 import { decryptKeys, maskKey } from '@/utils/crypto';
@@ -28,6 +28,66 @@ function formatNumber(n: number | null): string {
   if (Math.abs(n) >= 1e6) return (n / 1e6).toFixed(1).replace(/\.0$/, '') + 'M';
   if (Math.abs(n) >= 1e3) return (n / 1e3).toFixed(1).replace(/\.0$/, '') + 'K';
   return Math.round(n).toString();
+}
+
+type SortField = 'percent' | 'quota' | 'expiry';
+type SortDirection = 'asc' | 'desc';
+interface SortConfig {
+  field: SortField | null;
+  direction: SortDirection;
+}
+
+const SORT_STORAGE_KEY = 'oroio-key-sort';
+
+function loadSortConfig(): SortConfig {
+  try {
+    const saved = localStorage.getItem(SORT_STORAGE_KEY);
+    if (saved) return JSON.parse(saved);
+  } catch {
+    // ignore parse errors
+  }
+  return { field: null, direction: 'asc' };
+}
+
+function saveSortConfig(config: SortConfig) {
+  localStorage.setItem(SORT_STORAGE_KEY, JSON.stringify(config));
+}
+
+function SortableHeader({ field, label, align = 'left', sortConfig, onSort, className }: {
+  field: SortField;
+  label: string;
+  align?: 'left' | 'right' | 'center';
+  sortConfig: SortConfig;
+  onSort: (field: SortField) => void;
+  className?: string;
+}) {
+  const isActive = sortConfig.field === field;
+  return (
+    <TableHead
+      className={cn(
+        "text-xs tracking-wider cursor-pointer select-none transition-colors group",
+        align === 'right' && "text-right",
+        align === 'center' && "text-center",
+        isActive ? "text-foreground" : "hover:text-foreground",
+        className
+      )}
+      onClick={() => onSort(field)}
+    >
+      <span className={cn("inline-flex items-center gap-1.5", align === 'right' && "justify-end", align === 'center' && "justify-center")}>
+        {label}
+        <span className={cn(
+          "inline-flex items-center justify-center w-4 h-4 rounded transition-all",
+          isActive ? "bg-primary/15 text-primary" : "text-muted-foreground/40 group-hover:text-muted-foreground group-hover:bg-muted"
+        )}>
+          {isActive ? (
+            sortConfig.direction === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
+          ) : (
+            <ChevronsUpDown className="h-3 w-3" />
+          )}
+        </span>
+      </span>
+    </TableHead>
+  );
 }
 
 
@@ -141,6 +201,41 @@ export default function KeyList() {
   const [newKey, setNewKey] = useState('');
   const [adding, setAdding] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [sortConfig, setSortConfig] = useState<SortConfig>(loadSortConfig);
+
+  const handleSort = (field: SortField) => {
+    const newConfig: SortConfig = {
+      field: sortConfig.field === field && sortConfig.direction === 'desc' ? null : field,
+      direction: sortConfig.field === field ? (sortConfig.direction === 'asc' ? 'desc' : 'asc') : 'asc',
+    };
+    if (newConfig.field === null) newConfig.direction = 'asc';
+    setSortConfig(newConfig);
+    saveSortConfig(newConfig);
+  };
+
+  const sortedKeys = [...keys].sort((a, b) => {
+    if (!sortConfig.field) return 0;
+    const dir = sortConfig.direction === 'asc' ? 1 : -1;
+    switch (sortConfig.field) {
+      case 'percent': {
+        const pA = a.usage?.total ? (a.usage.used || 0) / a.usage.total : -1;
+        const pB = b.usage?.total ? (b.usage.used || 0) / b.usage.total : -1;
+        return (pA - pB) * dir;
+      }
+      case 'quota': {
+        const qA = a.usage?.used ?? -1;
+        const qB = b.usage?.used ?? -1;
+        return (qA - qB) * dir;
+      }
+      case 'expiry': {
+        const eA = a.usage?.expires || '';
+        const eB = b.usage?.expires || '';
+        return eA.localeCompare(eB) * dir;
+      }
+      default:
+        return 0;
+    }
+  });
 
   const loadData = useCallback(async (showRefreshing = false, autoRefresh = true, silent = false) => {
     try {
@@ -376,24 +471,33 @@ export default function KeyList() {
       </div>
 
       <div className="border border-border">
-        <Table>
+        <Table className="table-fixed">
+          <colgroup>
+            <col style={{ width: '4%' }} />
+            <col style={{ width: '5%' }} />
+            <col style={{ width: '18%' }} />
+            <col style={{ width: '12%' }} />
+            <col style={{ width: '22%' }} />
+            <col style={{ width: '22%' }} />
+            <col style={{ width: '10%' }} />
+          </colgroup>
           <TableHeader>
             <TableRow className="bg-muted/30 hover:bg-muted/30">
-              <TableHead className="w-10"></TableHead>
+              <TableHead></TableHead>
               <TableHead className="text-xs tracking-wider">NO</TableHead>
               <TableHead className="text-xs tracking-wider">KEY</TableHead>
-              <TableHead className="text-right text-xs tracking-wider">%</TableHead>
-              <TableHead className="text-xs tracking-wider text-right">QUOTA</TableHead>
-              <TableHead className="text-xs tracking-wider">EXPIRY</TableHead>
+              <SortableHeader field="percent" label="%" align="center" sortConfig={sortConfig} onSort={handleSort} />
+              <SortableHeader field="quota" label="QUOTA" align="center" sortConfig={sortConfig} onSort={handleSort} />
+              <SortableHeader field="expiry" label="EXPIRY" align="center" sortConfig={sortConfig} onSort={handleSort} />
               <TableHead className="text-right text-xs tracking-wider">ACTIONS</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {keys.map((info) => {
+            {sortedKeys.map((info) => {
               const isInvalid = info.usage?.raw?.startsWith('http_') ?? false;
               const percent = info.usage?.total ? Math.round((info.usage.used || 0) / info.usage.total * 100) : 0;
-              const isLow = info.usage?.balance != null && info.usage.total && info.usage.total > 0 && info.usage.balance / info.usage.total <= 0.1;
-              const isZero = info.usage?.balance != null && info.usage.balance <= 0;
+              const isLow = percent >= 80 && percent < 100;
+              const isZero = percent >= 100;
               const progressColor = isZero ? 'rgb(239 68 68 / 0.15)' : isLow ? 'rgb(245 158 11 / 0.15)' : 'rgb(16 185 129 / 0.15)';
 
               return (
@@ -433,10 +537,10 @@ export default function KeyList() {
                       isCurrent={info.isCurrent}
                     />
                   </TableCell>
-                  <TableCell className="text-right font-mono text-sm text-muted-foreground py-2">
+                  <TableCell className="text-center font-mono text-sm text-muted-foreground py-2">
                     {info.usage?.total ? `${percent}%` : '-'}
                   </TableCell>
-                  <TableCell className="py-2 text-sm text-muted-foreground font-mono text-right whitespace-nowrap">
+                  <TableCell className="py-2 text-sm text-muted-foreground font-mono text-center whitespace-nowrap">
                     {info.usage?.total ? (
                       <span>
                         {formatNumber(info.usage.used || 0)}
@@ -445,7 +549,7 @@ export default function KeyList() {
                       </span>
                     ) : '-'}
                   </TableCell>
-                  <TableCell className="py-2 whitespace-nowrap">
+                  <TableCell className="py-2 whitespace-nowrap text-center">
                     {isInvalid ? (
                       <Badge variant="destructive" className="text-xs">INVALID</Badge>
                     ) : (
