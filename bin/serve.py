@@ -354,6 +354,13 @@ class OroioHandler(http.server.SimpleHTTPRequestHandler):
             self.handle_remove_mcp(data)
         elif path == '/api/mcp/update':
             self.handle_update_mcp(data)
+        # BYOK (Custom Models)
+        elif path == '/api/byok/list':
+            self.handle_list_byok()
+        elif path == '/api/byok/remove':
+            self.handle_remove_byok(data)
+        elif path == '/api/byok/update':
+            self.handle_update_byok(data)
         # DK config
         elif path == '/api/dk/config':
             self.handle_dk_config(data)
@@ -754,6 +761,71 @@ class OroioHandler(http.server.SimpleHTTPRequestHandler):
             os.makedirs(FACTORY_DIR, exist_ok=True)
             with open(mcp_file, 'w') as f:
                 json.dump(config, f, indent=2)
+            self.send_json({'success': True})
+        except Exception as e:
+            self.send_json({'success': False, 'error': str(e)})
+    
+    # BYOK (Custom Models) handlers
+    def _get_factory_config(self):
+        """Read ~/.factory/config.json"""
+        config_file = os.path.join(FACTORY_DIR, 'config.json')
+        try:
+            with open(config_file, 'r') as f:
+                return json.load(f)
+        except:
+            return {}
+    
+    def _save_factory_config(self, config):
+        """Write ~/.factory/config.json"""
+        config_file = os.path.join(FACTORY_DIR, 'config.json')
+        os.makedirs(FACTORY_DIR, exist_ok=True)
+        with open(config_file, 'w') as f:
+            json.dump(config, f, indent=2)
+    
+    def handle_list_byok(self):
+        config = self._get_factory_config()
+        models = config.get('custom_models', [])
+        self.send_json(models)
+    
+    def handle_remove_byok(self, data):
+        index = data.get('index')
+        if index is None:
+            self.send_json({'success': False, 'error': 'Index is required'})
+            return
+        try:
+            config = self._get_factory_config()
+            models = config.get('custom_models', [])
+            idx = int(index)
+            if idx < 0 or idx >= len(models):
+                self.send_json({'success': False, 'error': 'Index out of range'})
+                return
+            models.pop(idx)
+            config['custom_models'] = models
+            self._save_factory_config(config)
+            self.send_json({'success': True})
+        except Exception as e:
+            self.send_json({'success': False, 'error': str(e)})
+    
+    def handle_update_byok(self, data):
+        index = data.get('index')
+        model_config = data.get('config')
+        if model_config is None:
+            self.send_json({'success': False, 'error': 'Config is required'})
+            return
+        try:
+            config = self._get_factory_config()
+            models = config.get('custom_models', [])
+            if index is None:
+                # Add new model
+                models.append(model_config)
+            else:
+                idx = int(index)
+                if idx < 0 or idx >= len(models):
+                    self.send_json({'success': False, 'error': 'Index out of range'})
+                    return
+                models[idx] = model_config
+            config['custom_models'] = models
+            self._save_factory_config(config)
             self.send_json({'success': True})
         except Exception as e:
             self.send_json({'success': False, 'error': str(e)})

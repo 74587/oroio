@@ -789,6 +789,8 @@ function Cmd-Run {
     if ($idx -gt $keys.Length) { $idx = 1 }
     
     $key = $keys[$idx - 1]
+    $masked = Mask-Key -Key $key
+    Write-Host "Using key #$idx ($masked)"
 
     $env:FACTORY_API_KEY = $key
 

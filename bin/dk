@@ -142,6 +142,7 @@ declare -a FETCH_INFOS
 
 fetch_all_infos() {
   local n=${#KEYS[@]}
+  local idx
   FETCH_INFOS=()
   if (( n == 0 )); then return; fi
   local jobs="$DKM_LIST_JOBS"
@@ -189,6 +190,7 @@ cache_load_infos() {
   local cur_sig; cur_sig=$(hash_keys_file)
   if [[ "$cur_sig" != "$sig" ]]; then return 1; fi
   FETCH_INFOS=()
+  local idx b64
   while IFS=$'\t' read -r idx b64; do
     [ -z "$idx" ] && continue
     FETCH_INFOS[$idx]=$(printf '%s' "$b64" | b64_decode)
@@ -205,6 +207,7 @@ cache_save_infos() {
   (( ttl > 0 )) || return 0
   local sig; sig=$(hash_keys_file)
   local now; now=$(date +%s)
+  local idx
   mkdir -p "$DKM_HOME"
   {
     printf '%s\n' "$now"
@@ -1193,13 +1196,36 @@ cmd_use() {
 
 cmd_run() {
   ensure_store
-  auto_rotate_if_needed
   load_keys
   [ ${#KEYS[@]} -gt 0 ] || die "暂无key"
   [ $# -ge 1 ] || die "用法: dk run <命令...>"
   local idx=$(current_index)
   (( idx <= ${#KEYS[@]} )) || idx=1
   IFS=$'\t' read -r key _ <<<"${KEYS[$((idx-1))]}"
+  local masked=$(mask_key "$key")
+
+  # 尝试从缓存读取用量信息显示，不阻塞启动
+  if cache_load_infos 2>/dev/null && [ -n "${FETCH_INFOS[$((idx-1))]:-}" ]; then
+    local info="${FETCH_INFOS[$((idx-1))]}"
+    local balnum total used raw
+    while IFS='=' read -r k v; do
+      case "$k" in
+        BALANCE_NUM) balnum="$v";;
+        TOTAL) total="$v";;
+        USED) used="$v";;
+        RAW) raw="$v";;
+      esac
+    done <<<"$info"
+    local bar=$(render_bar "$balnum" "$total" 20)
+    local usage_text=$(render_usage_text "$used" "$total" "$balnum")
+    [[ "$raw" == http_* ]] && usage_text="0/0"
+    printf "Using key #%d (%s): %s %s\n" "$idx" "$masked" "$bar" "$usage_text" >&2
+  else
+    printf "Using key #%d (%s)\n" "$idx" "$masked" >&2
+    # 后台异步刷新缓存
+    ( fetch_all_infos; cache_save_infos ) &>/dev/null &
+  fi
+
   FACTORY_API_KEY="$key" "$@"
 }
 
