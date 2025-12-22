@@ -263,12 +263,12 @@ export default function CommandsManager() {
 
       {/* Add Dialog */}
       <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl h-[min(80vh,600px)] flex flex-col">
           <DialogHeader>
             <DialogTitle>Create New Command</DialogTitle>
             <DialogDescription>Create a new command with name, description and content.</DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="flex flex-col flex-1 min-h-0 gap-4">
             <div className="space-y-2">
               <label className="text-sm font-medium">Name (without slash)</label>
               <Input
@@ -285,10 +285,10 @@ export default function CommandsManager() {
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewCommandDescription(e.target.value)}
               />
             </div>
-            <div className="space-y-2">
+            <div className="flex flex-col flex-1 min-h-0 space-y-2">
               <label className="text-sm font-medium">Content</label>
               <Textarea
-                className="min-h-[200px] font-mono"
+                className="flex-1 min-h-[100px] font-mono resize-none"
                 placeholder="# Your Command&#10;&#10;Instructions here..."
                 value={newCommandContent}
                 onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setNewCommandContent(e.target.value)}

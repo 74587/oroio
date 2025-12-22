@@ -15,6 +15,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Switch } from '@/components/ui/switch';
 import { listMcpServers, removeMcpServer, updateMcpServer, type McpServer } from '@/utils/api';
 
 export default function McpManager() {
@@ -63,10 +64,27 @@ export default function McpManager() {
     setEditConfig(getServerConfig(server));
   };
 
+  const parseServerConfig = (json: string, serverName: string) => {
+    const parsed = JSON.parse(json);
+    // Handle full mcpServers format: { "mcpServers": { "name": { ... } } }
+    if (parsed.mcpServers && typeof parsed.mcpServers === 'object') {
+      const servers = parsed.mcpServers;
+      const keys = Object.keys(servers);
+      if (keys.length === 1) {
+        return servers[keys[0]];
+      }
+      if (servers[serverName]) {
+        return servers[serverName];
+      }
+      throw new Error(`Server "${serverName}" not found in mcpServers`);
+    }
+    return parsed;
+  };
+
   const handleSaveEdit = async () => {
     if (!editingServer) return;
     try {
-      const config = JSON.parse(editConfig);
+      const config = parseServerConfig(editConfig, editingServer.name);
       await updateMcpServer(editingServer.name, config);
       setEditingServer(null);
       await loadServers();
@@ -78,7 +96,7 @@ export default function McpManager() {
   const handleAdd = async () => {
     if (!newServerName.trim()) return;
     try {
-      const config = JSON.parse(newServerConfig);
+      const config = parseServerConfig(newServerConfig, newServerName.trim());
       await updateMcpServer(newServerName.trim(), config);
       setNewServerName('');
       setNewServerConfig('{\n  "type": "stdio",\n  "command": "npx",\n  "args": ["-y", "package-name"]\n}');
@@ -98,6 +116,17 @@ export default function McpManager() {
       alert(err instanceof Error ? err.message : 'Failed to remove');
     }
     setServerToDelete(null);
+  };
+
+  const handleToggleEnabled = async (server: McpServer) => {
+    try {
+      const config = { ...server, disabled: !server.disabled };
+      delete (config as Record<string, unknown>).name;
+      await updateMcpServer(server.name, config);
+      await loadServers();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to toggle');
+    }
   };
 
   if (loading) {
@@ -163,6 +192,13 @@ export default function McpManager() {
                     className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-muted/50"
                     onClick={() => setExpandedServer(isExpanded ? null : server.name)}
                   >
+                    <div onClick={(e) => e.stopPropagation()}>
+                      <Switch
+                        checked={!server.disabled}
+                        onCheckedChange={() => handleToggleEnabled(server)}
+                        title={server.disabled ? 'Enable' : 'Disable'}
+                      />
+                    </div>
                     <div className="text-muted-foreground">
                       {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                     </div>
@@ -178,33 +214,33 @@ export default function McpManager() {
                       </p>
                     </div>
                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() => handleCopy(server)}
-                        title="Copy config"
-                      >
-                        {copiedServer === server.name ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() => handleEdit(server)}
-                        title="Edit"
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                        onClick={() => setServerToDelete(server.name)}
-                        title="Delete"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => handleCopy(server)}
+                          title="Copy config"
+                        >
+                          {copiedServer === server.name ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => handleEdit(server)}
+                          title="Edit"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                          onClick={() => setServerToDelete(server.name)}
+                          title="Delete"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                     </div>
                   </div>
                   {isExpanded && (

@@ -228,6 +228,9 @@ export interface McpServer {
   args?: string[];
   url?: string;
   env?: Record<string, string>;
+  disabled?: boolean;
+  alwaysAllow?: string[];
+  [key: string]: unknown;
 }
 
 export interface CustomModel {
