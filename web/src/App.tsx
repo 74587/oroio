@@ -27,7 +27,13 @@ const tabs: { id: Tab; label: string; icon: typeof Key }[] = [
 
 export default function App() {
   const sound = useSound();
-  const [activeTab, setActiveTab] = useState<Tab>('keys');
+  const [activeTab, setActiveTab] = useState<Tab>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('oroio-active-tab') as Tab;
+      if (saved && tabs.some(t => t.id === saved)) return saved;
+    }
+    return 'keys';
+  });
   const [mounted, setMounted] = useState(false);
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     if (typeof window !== 'undefined') {
@@ -127,6 +133,10 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('oroio-nav-style', navStyle);
   }, [navStyle]);
+
+  useEffect(() => {
+    localStorage.setItem('oroio-active-tab', activeTab);
+  }, [activeTab]);
 
   useEffect(() => {
     window.addEventListener('keydown', handleKeyDown);

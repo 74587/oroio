@@ -342,6 +342,19 @@ export async function updateCommand(name: string, content: string): Promise<void
   if (!data.success) throw new Error(data.error);
 }
 
+export async function renameCommand(oldName: string, newName: string): Promise<void> {
+  if (isElectron) {
+    return window.oroio.renameCommand(oldName, newName);
+  }
+  const res = await fetch('/api/commands/rename', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+    body: JSON.stringify({ oldName, newName }),
+  });
+  const data = await res.json();
+  if (!data.success) throw new Error(data.error);
+}
+
 // Droids API
 export async function listDroids(): Promise<Droid[]> {
   if (isElectron) {
@@ -537,6 +550,7 @@ declare global {
       deleteCommand: (name: string) => Promise<void>;
       getCommandContent: (name: string) => Promise<string>;
       updateCommand: (name: string, content: string) => Promise<void>;
+      renameCommand: (oldName: string, newName: string) => Promise<void>;
       // Droids
       listDroids: () => Promise<Droid[]>;
       createDroid: (name: string) => Promise<void>;

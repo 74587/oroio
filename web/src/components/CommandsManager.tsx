@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { RefreshCw, Plus, Trash2, Pencil, Terminal, Save, X, Copy, CheckCircle2, ChevronDown, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/components/ui/sheet';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -14,7 +14,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { listCommands, createCommand, deleteCommand, getCommandContent, updateCommand, type Command } from '@/utils/api';
+import { listCommands, createCommand, deleteCommand, getCommandContent, updateCommand, renameCommand, type Command } from '@/utils/api';
 
 function CommandCard({ cmd, onEdit, onDelete, onCopy, copiedCommand }: {
   cmd: Command;
@@ -27,7 +27,7 @@ function CommandCard({ cmd, onEdit, onDelete, onCopy, copiedCommand }: {
 
   return (
     <div className="group border-b last:border-b-0 hover:bg-muted/30 transition-colors">
-      <div className="flex items-center gap-3 py-3 px-4">
+      <div className="grid grid-cols-[auto_1fr_auto] items-center gap-3 py-3 px-4">
         <button
           onClick={() => setExpanded(!expanded)}
           className="text-muted-foreground hover:text-foreground transition-colors"
@@ -35,9 +35,9 @@ function CommandCard({ cmd, onEdit, onDelete, onCopy, copiedCommand }: {
           {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
         </button>
 
-        <div className="flex-1 min-w-0 cursor-pointer" onClick={() => setExpanded(!expanded)}>
+        <div className="min-w-0 overflow-hidden cursor-pointer" onClick={() => setExpanded(!expanded)}>
           <div className="flex items-center gap-3">
-            <code className="text-sm font-semibold font-mono text-foreground">/{cmd.name}</code>
+            <code className="text-sm font-semibold font-mono text-foreground whitespace-nowrap">/{cmd.name}</code>
             {cmd.description && (
               <span className="text-sm text-muted-foreground truncate">{cmd.description}</span>
             )}
@@ -97,6 +97,8 @@ export default function CommandsManager() {
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [commandToDelete, setCommandToDelete] = useState<string | null>(null);
   const [editingCommand, setEditingCommand] = useState<string | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editDescription, setEditDescription] = useState('');
   const [editContent, setEditContent] = useState('');
   const [newCommandName, setNewCommandName] = useState('');
   const [newCommandDescription, setNewCommandDescription] = useState('');
@@ -138,10 +140,7 @@ export default function CommandsManager() {
     setAdding(true);
     try {
       await createCommand(newCommandName.trim());
-      // Update with description and content
-      const content = newCommandDescription.trim()
-        ? `---\ndescription: ${newCommandDescription.trim()}\n---\n\n${newCommandContent}`
-        : newCommandContent || `# ${newCommandName.trim()}\n\nCommand instructions here.`;
+      const content = newCommandContent || `# ${newCommandName.trim()}\n\nCommand instructions here.`;
       await updateCommand(newCommandName.trim(), content);
       setNewCommandName('');
       setNewCommandDescription('');
@@ -152,6 +151,18 @@ export default function CommandsManager() {
       alert(err instanceof Error ? err.message : 'Failed to create command');
     }
     setAdding(false);
+  };
+
+  // When new content changes, extract description
+  const handleNewContentChange = (value: string) => {
+    setNewCommandContent(value);
+    setNewCommandDescription(extractDescription(value));
+  };
+
+  // When new description changes, update content
+  const handleNewDescriptionChange = (value: string) => {
+    setNewCommandDescription(value);
+    setNewCommandContent(updateDescriptionInContent(newCommandContent, value));
   };
 
   const handleDeleteCommand = async () => {
@@ -165,10 +176,44 @@ export default function CommandsManager() {
     setCommandToDelete(null);
   };
 
+  // Helper: extract description from frontmatter
+  const extractDescription = (content: string): string => {
+    const fmMatch = content.match(/^---\n([\s\S]*?)\n---/);
+    if (fmMatch) {
+      const descMatch = fmMatch[1].match(/^description:\s*(.*)$/m);
+      if (descMatch) return descMatch[1].trim();
+    }
+    return '';
+  };
+
+  // Helper: update description in frontmatter
+  const updateDescriptionInContent = (content: string, newDesc: string): string => {
+    const fmMatch = content.match(/^---\n([\s\S]*?)\n---(\n*)([\s\S]*)$/);
+    if (fmMatch) {
+      const fm = fmMatch[1];
+      const sep = fmMatch[2];
+      const body = fmMatch[3];
+      if (fm.match(/^description:\s*.*$/m)) {
+        // Replace existing description
+        const newFm = fm.replace(/^description:\s*.*$/m, `description: ${newDesc}`);
+        return `---\n${newFm}\n---${sep}${body}`;
+      } else {
+        // Add description to frontmatter
+        return `---\ndescription: ${newDesc}\n${fm}\n---${sep}${body}`;
+      }
+    } else if (newDesc) {
+      // No frontmatter, add one
+      return `---\ndescription: ${newDesc}\n---\n\n${content}`;
+    }
+    return content;
+  };
+
   const handleEditCommand = async (name: string) => {
     try {
       const content = await getCommandContent(name);
       setEditContent(content);
+      setEditDescription(extractDescription(content));
+      setEditName(name);
       setEditingCommand(name);
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Failed to load command');
@@ -176,11 +221,17 @@ export default function CommandsManager() {
   };
 
   const handleSaveCommand = async () => {
-    if (!editingCommand) return;
+    if (!editingCommand || !editName.trim()) return;
     setSaving(true);
     try {
-      await updateCommand(editingCommand, editContent);
+      const newName = editName.trim();
+      if (newName !== editingCommand) {
+        await renameCommand(editingCommand, newName);
+      }
+      await updateCommand(newName, editContent);
       setEditingCommand(null);
+      setEditName('');
+      setEditDescription('');
       setEditContent('');
       await loadCommands();
     } catch (err) {
@@ -191,7 +242,21 @@ export default function CommandsManager() {
 
   const handleCancelEdit = () => {
     setEditingCommand(null);
+    setEditName('');
+    setEditDescription('');
     setEditContent('');
+  };
+
+  // When content changes, extract description
+  const handleEditContentChange = (value: string) => {
+    setEditContent(value);
+    setEditDescription(extractDescription(value));
+  };
+
+  // When description changes, update content
+  const handleEditDescriptionChange = (value: string) => {
+    setEditDescription(value);
+    setEditContent(updateDescriptionInContent(editContent, value));
   };
 
   if (loading) {
@@ -261,80 +326,116 @@ export default function CommandsManager() {
         )}
       </div>
 
-      {/* Add Dialog */}
-      <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
-        <DialogContent className="max-w-2xl h-[min(80vh,600px)] flex flex-col">
-          <DialogHeader>
-            <DialogTitle>Create New Command</DialogTitle>
-            <DialogDescription>Create a new command with name, description and content.</DialogDescription>
-          </DialogHeader>
-          <div className="flex flex-col flex-1 min-h-0 gap-4">
+      {/* Add Sheet */}
+      <Sheet open={addDialogOpen} onOpenChange={(open) => {
+        setAddDialogOpen(open);
+        if (!open) {
+          setNewCommandName('');
+          setNewCommandDescription('');
+          setNewCommandContent('');
+        }
+      }}>
+        <SheetContent side="right" className="w-[600px] sm:max-w-none flex flex-col">
+          <SheetHeader>
+            <SheetTitle>Create New Command</SheetTitle>
+          </SheetHeader>
+          <div className="flex-1 flex flex-col gap-4 overflow-hidden px-4">
             <div className="space-y-2">
               <label className="text-sm font-medium">Name (without slash)</label>
               <Input
+                className="font-mono"
                 placeholder="my-command"
                 value={newCommandName}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewCommandName(e.target.value)}
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Description (optional)</label>
+              <label className="text-sm font-medium">Description</label>
               <Input
                 placeholder="What this command does"
                 value={newCommandDescription}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewCommandDescription(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleNewDescriptionChange(e.target.value)}
               />
             </div>
             <div className="flex flex-col flex-1 min-h-0 space-y-2">
               <label className="text-sm font-medium">Content</label>
               <Textarea
-                className="flex-1 min-h-[100px] font-mono resize-none"
-                placeholder="# Your Command&#10;&#10;Instructions here..."
+                className="flex-1 min-h-[200px] font-mono resize-none"
                 value={newCommandContent}
-                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setNewCommandContent(e.target.value)}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setAddDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleAddCommand} disabled={adding || !newCommandName.trim()}>
-              {adding ? 'Creating...' : 'Create'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit Dialog */}
-      <Dialog open={editingCommand !== null} onOpenChange={(open) => !open && handleCancelEdit()}>
-        <DialogContent className="max-w-3xl max-h-[80vh] flex flex-col">
-          <DialogHeader>
-            <DialogTitle className="font-mono">/{editingCommand}</DialogTitle>
-            <DialogDescription>Edit your command instructions.</DialogDescription>
-          </DialogHeader>
-          <Textarea
-            className="flex-1 min-h-[400px] w-full font-mono resize-none"
-            value={editContent}
-            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setEditContent(e.target.value)}
-            placeholder="---
+                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => handleNewContentChange(e.target.value)}
+                placeholder="---
 description: Your command description
+argument-hint: <args>
 ---
 
 # Your Command
 
 Instructions here..."
-          />
-          <DialogFooter>
+              />
+            </div>
+          </div>
+          <SheetFooter className="px-4">
+            <Button variant="outline" onClick={() => setAddDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleAddCommand} disabled={adding || !newCommandName.trim()}>
+              {adding ? 'Creating...' : 'Create'}
+            </Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
+
+      {/* Edit Sheet */}
+      <Sheet open={editingCommand !== null} onOpenChange={(open) => !open && handleCancelEdit()}>
+        <SheetContent side="right" className="w-[600px] sm:max-w-none flex flex-col">
+          <SheetHeader>
+            <SheetTitle>Edit Command</SheetTitle>
+          </SheetHeader>
+          <div className="flex-1 flex flex-col gap-4 overflow-hidden px-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Name (without slash)</label>
+              <Input
+                className="font-mono"
+                placeholder="command-name"
+                value={editName}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditName(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Description</label>
+              <Input
+                placeholder="What this command does"
+                value={editDescription}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleEditDescriptionChange(e.target.value)}
+              />
+            </div>
+            <div className="flex flex-col flex-1 min-h-0 space-y-2">
+              <label className="text-sm font-medium">Content</label>
+              <Textarea
+                className="flex-1 min-h-[200px] w-full font-mono resize-none"
+                value={editContent}
+                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => handleEditContentChange(e.target.value)}
+                placeholder="---
+description: Your command description
+argument-hint: <args>
+---
+
+# Your Command
+
+Instructions here..."
+              />
+            </div>
+          </div>
+          <SheetFooter className="px-4">
             <Button variant="outline" onClick={handleCancelEdit}>
               <X className="h-4 w-4 mr-2" />
               Cancel
             </Button>
-            <Button onClick={handleSaveCommand} disabled={saving}>
+            <Button onClick={handleSaveCommand} disabled={saving || !editName.trim()}>
               <Save className="h-4 w-4 mr-2" />
               {saving ? 'Saving...' : 'Save'}
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
 
       {/* Delete Confirmation */}
       <AlertDialog open={commandToDelete !== null} onOpenChange={(open) => !open && setCommandToDelete(null)}>

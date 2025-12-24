@@ -77,6 +77,7 @@ export interface OroioAPI {
   deleteCommand: (name: string) => Promise<void>;
   getCommandContent: (name: string) => Promise<string>;
   updateCommand: (name: string, content: string) => Promise<void>;
+  renameCommand: (oldName: string, newName: string) => Promise<void>;
   // Droids
   listDroids: () => Promise<Droid[]>;
   createDroid: (name: string) => Promise<void>;
@@ -133,6 +134,7 @@ const api: OroioAPI = {
   deleteCommand: (name: string) => ipcRenderer.invoke('commands:delete', name),
   getCommandContent: (name: string) => ipcRenderer.invoke('commands:content', name),
   updateCommand: (name: string, content: string) => ipcRenderer.invoke('commands:update', name, content),
+  renameCommand: (oldName: string, newName: string) => ipcRenderer.invoke('commands:rename', oldName, newName),
   // Droids
   listDroids: () => ipcRenderer.invoke('droids:list'),
   createDroid: (name: string) => ipcRenderer.invoke('droids:create', name),

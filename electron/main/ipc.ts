@@ -209,6 +209,7 @@ export function registerIpcHandlers(): void {
           }
         }
       }
+      commands.sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()));
       return commands;
     } catch {
       return [];
@@ -244,6 +245,21 @@ Command instructions here.
     const commandsDir = path.join(FACTORY_DIR, 'commands');
     const realDir = await fs.realpath(commandsDir);
     await fs.writeFile(path.join(realDir, `${name}.md`), content);
+  });
+
+  ipcMain.handle('commands:rename', async (_event, oldName: string, newName: string): Promise<void> => {
+    if (oldName === newName) return;
+    const commandsDir = path.join(FACTORY_DIR, 'commands');
+    const realDir = await fs.realpath(commandsDir);
+    const oldPath = path.join(realDir, `${oldName}.md`);
+    const newPath = path.join(realDir, `${newName}.md`);
+    try {
+      await fs.access(newPath);
+      throw new Error(`Command "${newName}" already exists`);
+    } catch (e) {
+      if ((e as NodeJS.ErrnoException).code !== 'ENOENT') throw e;
+    }
+    await fs.rename(oldPath, newPath);
   });
 
   // Droids handlers

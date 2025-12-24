@@ -338,6 +338,8 @@ class OroioHandler(http.server.SimpleHTTPRequestHandler):
             self.handle_command_content(data)
         elif path == '/api/commands/update':
             self.handle_update_command(data)
+        elif path == '/api/commands/rename':
+            self.handle_rename_command(data)
         # Droids
         elif path == '/api/droids/list':
             self.handle_list_droids()
@@ -584,6 +586,7 @@ class OroioHandler(http.server.SimpleHTTPRequestHandler):
                         })
         except:
             pass
+        commands.sort(key=lambda x: x['name'].lower())
         self.send_json(commands)
     
     def handle_create_command(self, data):
@@ -638,6 +641,28 @@ class OroioHandler(http.server.SimpleHTTPRequestHandler):
             real_dir = os.path.realpath(commands_dir)
             with open(os.path.join(real_dir, f'{name}.md'), 'w', encoding='utf-8') as f:
                 f.write(content)
+            self.send_json({'success': True})
+        except Exception as e:
+            self.send_json({'success': False, 'error': str(e)})
+    
+    def handle_rename_command(self, data):
+        old_name = data.get('oldName', '').strip()
+        new_name = data.get('newName', '').strip()
+        if not old_name or not new_name:
+            self.send_json({'success': False, 'error': 'Both old and new names are required'})
+            return
+        if old_name == new_name:
+            self.send_json({'success': True})
+            return
+        try:
+            commands_dir = os.path.join(FACTORY_DIR, 'commands')
+            real_dir = os.path.realpath(commands_dir)
+            old_path = os.path.join(real_dir, f'{old_name}.md')
+            new_path = os.path.join(real_dir, f'{new_name}.md')
+            if os.path.exists(new_path):
+                self.send_json({'success': False, 'error': f'Command "{new_name}" already exists'})
+                return
+            os.rename(old_path, new_path)
             self.send_json({'success': True})
         except Exception as e:
             self.send_json({'success': False, 'error': str(e)})
